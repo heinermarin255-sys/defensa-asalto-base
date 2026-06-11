@@ -1,0 +1,9 @@
+Esta carpeta es para los archivos de sonido del juego.
+
+Coloca archivos .wav con estos nombres exactos:
+  - disparo.wav
+  - explosion.wav
+  - victoria.wav
+  - derrota.wav
+  - clic.wav
+  - construccion.wav
