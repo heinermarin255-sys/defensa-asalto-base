@@ -379,9 +379,10 @@ class VentanaJuego:
         self.canvas_mapa.deshabilitar_clic()
         self.lbl_fase.config(text="💥 COMBATE EN PROGRESO")
 
-        # Deshabilitar panel
+        # Deshabilitar solo los botones del panel (Label y Frame no soportan state)
         for widget in self.panel_lateral.winfo_children():
-            widget.config(state="disabled") if hasattr(widget, 'config') else None
+            if isinstance(widget, tk.Button):
+                widget.config(state="disabled")
 
         # Mostrar mensaje
         tk.Label(self.panel_lateral, text="⚔️  COMBATE\nEN PROGRESO...",
