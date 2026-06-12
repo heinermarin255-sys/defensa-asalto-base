@@ -85,6 +85,26 @@ FACCIONES = {
 }
 
 # ──────────────────────────────────────────
+# IMÁGENES DE DEFENSAS
+# ──────────────────────────────────────────
+# Sufijo del archivo de imagen según la facción del jugador
+SUFIJO_FACCION = {
+    "Naturaleza": "N",
+    "Futurista": "F",
+    "Medieval": "M",
+}
+
+# Nombre base del archivo para cada tipo de estructura.
+# El archivo final es: {prefijo}{sufijo_faccion}.png  (ej: TorreN.png)
+IMAGENES_DEFENSAS = {
+    "base": "Ayunta",
+    "torre_arquera": "Torre",
+    "torre_magos": "Mago",
+    "torre_infernal": "Infernal",
+    "canon": "Cañon",
+}
+
+# ──────────────────────────────────────────
 # DEFENSAS - Estadísticas base
 # ──────────────────────────────────────────
 DEFENSAS = {

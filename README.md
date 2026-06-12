@@ -1,144 +1,221 @@
-# ⚔️ Defensa y Asalto de Base
+# Defensa y Asalto de Base
 
-Juego de estrategia local para 2 jugadores inspirado en Clash of Clans.
-Desarrollado como proyecto universitario de Introducción a la Programación.
+Juego de estrategia local para dos jugadores, inspirado en el género de
+defensa de base tipo Clash of Clans. Desarrollado en Python con Tkinter
+como interfaz gráfica y Pygame para los efectos de sonido.
+
+Proyecto académico para el curso de Introducción a la Programación.
 
 ---
 
-## 🚀 Cómo ejecutar
+## Requisitos
+
+- Python 3.10 o superior
+- Tkinter (incluido en la instalación estándar de Python)
+- Pygame (opcional, para efectos de sonido y música)
+- Pillow (opcional, recomendado para que las cartas de las defensas se
+  muestren con su tamaño correcto en el mapa)
+
+Instalación de dependencias opcionales:
+
+```bash
+pip install pygame pillow
+```
+
+El juego funciona sin estas dos librerías, pero se recomienda instalarlas
+para obtener la experiencia completa (sonido y cartas con buena calidad
+visual).
+
+---
+
+## Ejecución
+
+Desde la carpeta raíz del proyecto:
 
 ```bash
 python main.py
 ```
 
-### Requisitos
-
-- Python 3.10 o superior
-- `tkinter` (incluido en Python estándar)
-- `pygame` (opcional, para sonidos): `pip install pygame`
-
 ---
 
-## 📁 Estructura del proyecto
+## Estructura del proyecto
 
 ```
 Defensa y Asalto de Base/
 │
-├── main.py                    ← Archivo principal (ejecutar este)
+├── main.py                    Punto de entrada de la aplicación
 │
 ├── clases/
-│   ├── juego.py               ← Orquestador principal del juego
-│   ├── jugador.py             ← Clase Jugador
-│   ├── mapa.py                ← Cuadrícula 10x10
-│   ├── estructuras.py         ← Torres, Muros, Trampas, Base (con herencia)
-│   ├── unidades.py            ← Tropas atacantes (con herencia)
-│   ├── combate.py             ← Motor de combate automático
-│   ├── canvas_mapa.py         ← Renderizado del mapa en Tkinter Canvas
-│   ├── ventana_login.py       ← Pantallas de Login y Registro
-│   ├── ventana_facciones.py   ← Selección de facción
-│   ├── ventana_juego.py       ← Pantalla principal de juego
-│   └── ventana_ranking.py     ← Top jugadores
+│   ├── juego.py                Controlador principal y flujo de pantallas
+│   ├── jugador.py               Datos del jugador durante la partida
+│   ├── mapa.py                  Cuadricula de 10x10 y su estado
+│   ├── estructuras.py           Base, muros, trampas y torres (herencia)
+│   ├── unidades.py               Tropas atacantes (herencia)
+│   ├── combate.py                Motor de combate automático
+│   ├── canvas_mapa.py             Renderizado del mapa en Tkinter
+│   ├── ventana_login.py           Pantallas de inicio de sesion y registro
+│   ├── ventana_facciones.py       Seleccion de faccion
+│   ├── ventana_juego.py           Pantalla de construccion, ataque y combate
+│   └── ventana_ranking.py          Tabla de mejores jugadores
 │
 ├── utils/
-│   ├── constantes.py          ← Todas las constantes y configuración
-│   ├── gestor_datos.py        ← Lectura/escritura JSON
-│   └── gestor_sonido.py       ← Audio con pygame
+│   ├── constantes.py            Configuracion general y datos del juego
+│   ├── gestor_datos.py            Persistencia en archivos JSON
+│   └── gestor_sonido.py            Manejo de audio con Pygame
 │
 ├── datos/
-│   └── jugadores.json         ← Creado automáticamente al registrarse
+│   └── jugadores.json           Cuentas y estadisticas (se crea solo)
 │
-├── imagenes/                  ← Para agregar sprites futuros
-└── sonidos/                   ← Archivos .wav para efectos de sonido
+├── imagenes/                   Cartas e ilustraciones de las facciones
+└── sonidos/                     Efectos de sonido y musica
 ```
 
 ---
 
-## 🎮 Cómo jugar
+## Flujo del juego
 
-### Flujo general
+1. Menu principal
+2. Inicio de sesion de los dos jugadores (o registro de cuentas nuevas)
+3. Seleccion de faccion (cada jugador elige una distinta)
+4. Por cada ronda:
+   - Fase de construccion: el jugador defensor coloca torres, muros y
+     trampas en el mapa
+   - Fase de ataque: el jugador atacante despliega tropas en los bordes
+     del mapa
+   - Combate automatico: las tropas avanzan, las torres disparan y las
+     trampas se activan sin intervencion manual
+   - Resultado de la ronda y actualizacion del marcador
+5. La partida se gana al alcanzar 3 rondas ganadas
+6. Pantalla final y actualizacion de estadisticas
+7. Tabla de mejores jugadores (defensores y atacantes)
 
-1. **Menú Principal** → Nueva Partida
-2. **Login** → Ambos jugadores inician sesión (o se registran)
-3. **Selección de Facción** → Cada jugador elige una facción diferente
-4. **Rondas** (necesitas ganar 3 para ganar la partida):
-   - **Fase de Construcción**: El defensor construye torres, muros y trampas
-   - **Fase de Ataque**: El atacante despliega tropas en los bordes del mapa
-   - **Combate automático**: Las tropas avanzan y las torres disparan solas
-   - **Resultado**: Se muestra quién ganó la ronda
+Los roles de defensor y atacante se alternan en cada ronda.
 
-### Roles
-
-- Los roles se **alternan cada ronda** (el defensor pasa a ser atacante y viceversa)
-- **Defensor**: gana si todas las tropas mueren antes de destruir la base
-- **Atacante**: gana si destruye la **Base Central** (celda central del mapa)
-
----
-
-## 🏰 Defensas disponibles (Defensor)
-
-| Defensa          | Costo | Vida | Daño | Alcance | Especial                      |
-|------------------|-------|------|------|---------|-------------------------------|
-| Torre Arquera    | 50    | 80   | 15   | 3       | Ataque rápido                 |
-| Torre de Magos   | 80    | 70   | 25   | 2       | Daño en área                  |
-| Torre Infernal   | 100   | 90   | 10+  | 2       | Daño acumulativo              |
-| Cañón            | 70    | 120  | 40   | 2       | Gran daño, lento              |
-| Muro             | 20    | 200  | 0    | —       | Bloquea tropas                |
-| Trampa Explosiva | 30    | 1    | 50   | —       | Se activa una vez al pisarla  |
-
-### Cómo construir
-
-- Selecciona una defensa del panel lateral
-- Haz clic en cualquier celda interior del mapa (no en los bordes)
-- No puedes construir sobre la base central
+Condiciones de victoria de una ronda:
+- El atacante gana si logra destruir la base central
+- El defensor gana si elimina a todas las tropas enemigas antes de que
+  la base sea destruida
 
 ---
 
-## ⚔️ Tropas disponibles (Atacante)
+## Facciones
 
-| Tropa   | Costo | Vida | Daño | Velocidad | Especial                   |
-|---------|-------|------|------|-----------|----------------------------|
-| Duende  | 25    | 40   | 10   | 2         | Muy rápido                 |
-| Gigante | 80    | 200  | 20   | 1         | Prioriza defensas          |
-| Arquera | 50    | 60   | 20   | 1         | Ataca a 2 casillas         |
-| Pekka   | 150   | 300  | 50   | 1         | Máximo daño y vida         |
+El juego incluye tres facciones. La diferencia entre ellas es unicamente
+visual (colores, iconos e imagenes de las defensas); las estadisticas y
+mecanicas son las mismas para las tres.
 
-### Cómo desplegar tropas
-
-- Selecciona una tropa del panel lateral
-- Haz clic en cualquier celda del **borde** del mapa
-- Cuando estés listo, presiona "INICIAR COMBATE"
-
----
-
-## 🌍 Facciones
-
-| Facción     | Descripción                        |
+| Facción     | Identidad visual                  |
 |-------------|------------------------------------|
-| Medieval    | Colores cálidos, madera y piedra   |
-| Futurista   | Colores cian y neón                |
-| Naturaleza  | Tonos verdes y orgánicos           |
+| Medieval    | Tonos calidos, piedra y madera     |
+| Futurista   | Tonos azules y energia             |
+| Naturaleza  | Tonos verdes y organicos           |
 
-Las facciones son solo **visuales** — no cambian las mecánicas.
-
----
-
-## 🔊 Agregar sonidos
-
-Coloca archivos `.wav` en la carpeta `sonidos/` con estos nombres:
-- `disparo.wav` — al atacar torres
-- `explosion.wav` — al destruir estructuras o activar trampas
-- `victoria.wav` — al ganar una ronda
-- `derrota.wav` — al perder
-- `clic.wav` — al hacer clic en menús
-- `construccion.wav` — al construir
-
-El juego funciona correctamente sin estos archivos.
+Los dos jugadores deben elegir facciones distintas.
 
 ---
 
-## 💾 Datos guardados
+## Defensas
 
-Los jugadores y estadísticas se guardan en `datos/jugadores.json`.
-Las contraseñas se guardan hasheadas con SHA-256.
+| Defensa          | Costo | Vida | Daño | Alcance | Caracteristica                 |
+|------------------|-------|------|------|---------|---------------------------------|
+| Torre Arquera    | 50    | 80   | 15   | 3       | Ataque rapido de largo alcance  |
+| Torre de Magos   | 80    | 70   | 25   | 2       | Daño en area                    |
+| Torre Infernal   | 100   | 90   | 10+  | 2       | El daño aumenta con cada ataque |
+| Cañon            | 70    | 120  | 40   | 2       | Daño alto, velocidad de ataque baja |
+| Muro             | 20    | 200  | 0    | -       | Bloquea el paso de las tropas   |
+| Trampa explosiva | 30    | 1    | 50   | -       | Se activa una sola vez al ser pisada |
+
+Para construir, selecciona una defensa en el panel lateral y haz clic en
+una celda interior del mapa. La base central no puede sustituirse ni
+construirse encima de ella.
 
 ---
+
+## Tropas
+
+| Tropa   | Costo | Vida | Daño | Velocidad | Caracteristica           |
+|---------|-------|------|------|-----------|---------------------------|
+| Duende  | 25    | 40   | 10   | 2         | Movimiento rapido         |
+| Gigante | 80    | 200  | 20   | 1         | Prioriza atacar defensas  |
+| Arquera | 50    | 60   | 20   | 1         | Ataca a distancia (2 celdas) |
+| Pekka   | 150   | 300  | 50   | 1         | Mayor daño y vida del juego |
+
+Para atacar, selecciona una tropa en el panel lateral y haz clic en una
+celda del borde del mapa para desplegarla. Cuando termines de desplegar
+tropas, presiona el boton para iniciar el combate.
+
+---
+
+## Imagenes de las cartas
+
+Las imagenes de las defensas se encuentran en la carpeta `imagenes/` y
+siguen la convencion `<Nombre><Sufijo>.png`, donde el sufijo indica la
+faccion:
+
+| Sufijo | Faccion     |
+|--------|-------------|
+| N      | Naturaleza  |
+| F      | Futurista   |
+| M      | Medieval    |
+
+Ejemplo: `TorreN.png` corresponde a la Torre Arquera de la faccion
+Naturaleza.
+
+Mapeo de defensas a archivos:
+
+| Defensa         | Prefijo del archivo |
+|-----------------|----------------------|
+| Base central    | Ayunta               |
+| Torre Arquera   | Torre                |
+| Torre de Magos  | Mago                 |
+| Torre Infernal  | Infernal             |
+| Cañon           | Cañon                |
+
+Al construir, el juego carga automaticamente la imagen correspondiente
+segun la faccion del jugador defensor. Si una imagen no se encuentra, la
+defensa se dibuja con un color y un icono de respaldo, por lo que el
+juego sigue siendo jugable aunque falten archivos.
+
+Las imagenes de muros, trampas, tropas y otros elementos pueden agregarse
+mas adelante siguiendo la misma convencion de nombres.
+
+---
+
+## Datos guardados
+
+Las cuentas de los jugadores y sus estadisticas se almacenan en
+`datos/jugadores.json`. Las contraseñas se guardan utilizando un hash
+SHA-256, nunca en texto plano.
+
+Estadisticas registradas por jugador:
+- Victorias como defensor
+- Victorias como atacante
+- Partidas jugadas
+
+---
+
+## Sonido
+
+Pygame se utiliza unicamente para reproducir audio. Si la libreria no
+esta instalada, el juego se ejecuta normalmente sin sonido.
+
+Archivos esperados en la carpeta `sonidos/`:
+
+| Archivo            | Uso                                |
+|--------------------|-------------------------------------|
+| disparo.wav        | Ataque de una torre                 |
+| explosion.wav       | Destruccion de estructuras o trampas |
+| victoria.wav        | Victoria en una ronda                |
+| derrota.wav         | Derrota en una ronda                 |
+| clic.wav            | Interaccion en menus                 |
+| construccion.wav    | Colocacion de una defensa            |
+
+---
+
+## Posibles mejoras futuras
+
+- Imagenes para muros, trampas y tropas
+- Animaciones durante el combate
+- Mas tipos de defensas y tropas en `utils/constantes.py`
+- Modo de un jugador contra una IA basica
+- Efectos de sonido adicionales y musica de fondo

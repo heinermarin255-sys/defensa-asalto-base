@@ -4,12 +4,23 @@ Renderiza el mapa 10x10 usando tkinter.Canvas.
 Dibuja celdas, estructuras y unidades.
 """
 
+import os
 import tkinter as tk
 from utils.constantes import (
     FILAS, COLUMNAS, TAMANO_CELDA,
     COLOR_CELDA_VACIA, COLOR_CELDA_BORDE, COLOR_ACENTO,
-    FACCIONES, BASE_FILA, BASE_COL
+    FACCIONES, BASE_FILA, BASE_COL,
+    SUFIJO_FACCION, IMAGENES_DEFENSAS
 )
+
+# Pillow se usa (si está disponible) para escalar las imágenes de las
+# cartas al tamaño exacto de cada celda. Si no está instalado, el juego
+# sigue funcionando con el dibujo de respaldo (colores + emojis).
+try:
+    from PIL import Image, ImageTk
+    PIL_DISPONIBLE = True
+except ImportError:
+    PIL_DISPONIBLE = False
 
 
 class CanvasMapa:
@@ -51,7 +62,42 @@ class CanvasMapa:
             self.canvas.bind("<Motion>", self._on_hover)
             self.canvas.bind("<Leave>", self._on_leave)
 
+        # Cargar las imágenes de las defensas según la facción del defensor
+        self.imagenes_defensas = {}
+        self._cargar_imagenes_defensas()
+
         self.dibujar()
+
+    def _cargar_imagenes_defensas(self):
+        """
+        Carga las imágenes de las cartas de defensa correspondientes a la
+        facción del defensor (sufijo N = Naturaleza, F = Futurista,
+        M = Medieval) y las escala al tamaño de una celda del mapa.
+        """
+        sufijo = SUFIJO_FACCION.get(self.faccion, "M")
+        carpeta = os.path.join(os.path.dirname(__file__), "..", "imagenes")
+        tamano = TAMANO_CELDA - 6  # pequeño margen respecto al borde de la celda
+
+        for tipo, prefijo in IMAGENES_DEFENSAS.items():
+            ruta = os.path.join(carpeta, f"{prefijo}{sufijo}.png")
+
+            if not os.path.exists(ruta):
+                continue
+
+            try:
+                if PIL_DISPONIBLE:
+                    imagen = Image.open(ruta).convert("RGBA")
+                    imagen = imagen.resize((tamano, tamano), Image.LANCZOS)
+                    self.imagenes_defensas[tipo] = ImageTk.PhotoImage(imagen)
+                else:
+                    # Sin Pillow: reducir con subsample (factores enteros)
+                    imagen = tk.PhotoImage(file=ruta)
+                    factor = max(1, imagen.width() // tamano)
+                    if factor > 1:
+                        imagen = imagen.subsample(factor, factor)
+                    self.imagenes_defensas[tipo] = imagen
+            except Exception as e:
+                print(f"[MAPA] No se pudo cargar la imagen {ruta}: {e}")
 
     # ──────────────────────────────────────────
     # DIBUJO PRINCIPAL
@@ -113,6 +159,13 @@ class CanvasMapa:
         colores = self.colores
         porcentaje = est.porcentaje_vida()
 
+        # Si existe una imagen de carta para esta defensa, usarla
+        if tipo in self.imagenes_defensas:
+            self.canvas.create_image(cx, cy - 2, image=self.imagenes_defensas[tipo])
+            self._dibujar_barra_vida(x0, y1 - 8, x1, y1 - 2, porcentaje)
+            return
+
+        # ── Dibujo de respaldo (sin imagen disponible) ──
         # Color de fondo según tipo
         colores_fondo = {
             "base": colores["color_base"],
