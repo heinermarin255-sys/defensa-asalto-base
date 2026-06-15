@@ -47,11 +47,7 @@ FACCIONES = {
         "color_base": "#5C3317",
         "color_trampa": "#8B0000",
         "color_fondo_panel": "#3E1F00",
-        "emoji_torre": "🏰",
-        "emoji_tropa": "⚔️",
-        "emoji_base": "👑",
-        "emoji_muro": "🧱",
-        "emoji_trampa": "💥",
+        "emoji_base": "👑",          # usado en la pantalla de selección de facción
         "descripcion": "Antigua, resistente y honorable.",
     },
     "Futurista": {
@@ -61,11 +57,7 @@ FACCIONES = {
         "color_base": "#003344",
         "color_trampa": "#ff4500",
         "color_fondo_panel": "#001a26",
-        "emoji_torre": "🔭",
-        "emoji_tropa": "🤖",
-        "emoji_base": "⚡",
-        "emoji_muro": "🔷",
-        "emoji_trampa": "💣",
+        "emoji_base": "⚡",          # usado en la pantalla de selección de facción
         "descripcion": "Tecnología avanzada y energía pura.",
     },
     "Naturaleza": {
@@ -75,11 +67,7 @@ FACCIONES = {
         "color_base": "#013220",
         "color_trampa": "#8B6914",
         "color_fondo_panel": "#0a2a0a",
-        "emoji_torre": "🌲",
-        "emoji_tropa": "🌿",
-        "emoji_base": "🌳",
-        "emoji_muro": "🍀",
-        "emoji_trampa": "🍄",
+        "emoji_base": "🌳",          # usado en la pantalla de selección de facción
         "descripcion": "Fuerza de la naturaleza y vida salvaje.",
     },
 }
