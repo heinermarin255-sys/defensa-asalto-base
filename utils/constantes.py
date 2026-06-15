@@ -18,10 +18,18 @@ BASE_COL = 4
 # ──────────────────────────────────────────
 # JUEGO
 # ──────────────────────────────────────────
-GEMAS_INICIALES_DEFENSOR = 300
-GEMAS_INICIALES_ATACANTE = 250
+GEMAS_INICIALES_DEFENSOR = 300      # alias mantenido por compatibilidad
+GEMAS_INICIALES_ATACANTE = 250      # alias mantenido por compatibilidad
+
+# ── Sistema de dinero por ronda ──────────────────────────────────────────────
+DINERO_INICIAL_DEFENSOR = 300       # dinero base al comenzar como defensor
+DINERO_INICIAL_ATACANTE = 250       # dinero base al comenzar como atacante
+DINERO_POR_RONDA = 50               # bono adicional que ambos jugadores reciben cada ronda
+BONO_DANO_DIVISOR = 10              # el atacante recibe bonus = daño_total / divisor
+BONO_BAJA = 15                      # el defensor gana este valor por cada unidad eliminada
+
 RONDAS_PARA_GANAR = 3
-INTERVALO_COMBATE_MS = 600   # milisegundos entre cada turno de combate
+INTERVALO_COMBATE_MS = 600          # milisegundos entre cada turno de combate
 
 # ──────────────────────────────────────────
 # COLORES BASE (tema oscuro)
@@ -144,7 +152,7 @@ DEFENSAS = {
         "tipo": "canon",
     },
     "Muro": {
-        "costo": 20,
+        "costo": 10,
         "vida": 200,
         "dano": 0,
         "alcance": 0,

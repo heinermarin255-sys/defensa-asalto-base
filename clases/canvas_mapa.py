@@ -38,7 +38,8 @@ class CanvasMapa:
     ALTO  = FILAS   * TAMANO_CELDA
 
     def __init__(self, padre: tk.Widget, mapa, faccion_defensor: str,
-                 callback_clic=None, faccion_atacante: str = None):
+                 callback_clic=None, faccion_atacante: str = None,
+                 fase_ref: list = None):
         self.mapa             = mapa
         self.faccion          = faccion_defensor
         self.faccion_atacante = faccion_atacante or faccion_defensor
@@ -46,6 +47,8 @@ class CanvasMapa:
         self.colores_atacante = FACCIONES[self.faccion_atacante]
         self.callback_clic    = callback_clic
         self.celda_hover      = None
+        # lista mutable de un elemento para leer la fase actual desde ventana_juego
+        self._fase_ref        = fase_ref if fase_ref is not None else ["construccion"]
 
         self.canvas = tk.Canvas(
             padre,
@@ -103,6 +106,17 @@ class CanvasMapa:
             img_src  = Image.open(ruta).convert("RGBA")
             img_full = img_src.resize((self.ANCHO, self.ALTO), Image.LANCZOS)
 
+            # Futurista: reducir saturación y aplicar leve desenfoque
+            if self.faccion == "Futurista" and PIL_DISPONIBLE:
+                from PIL import ImageEnhance, ImageFilter
+                rgb  = img_full.convert("RGB")
+                rgb  = ImageEnhance.Color(rgb).enhance(0.45)       # desaturar
+                rgb  = ImageEnhance.Brightness(rgb).enhance(0.75)  # oscurecer
+                rgb  = rgb.filter(ImageFilter.GaussianBlur(radius=1.2))
+                r, g, b = rgb.split()
+                _, _, _, a = img_full.split()
+                img_full = Image.merge("RGBA", (r, g, b, a))
+
             opacidad = _OPACIDAD_TERRENO.get(self.faccion, 255)
             if opacidad < 255:
                 r, g, b, a = img_full.split()
@@ -123,19 +137,21 @@ class CanvasMapa:
     def _cargar_imagenes_defensas(self):
         sufijo  = SUFIJO_FACCION.get(self.faccion, "M")
         carpeta = os.path.join(os.path.dirname(__file__), "..", "imagenes")
-        tamano  = TAMANO_CELDA - 6
+        tamano        = TAMANO_CELDA - 6
+        tamano_muro   = TAMANO_CELDA - 22   # muros más pequeños visualmente
 
         for tipo, prefijo in IMAGENES_DEFENSAS.items():
             ruta = os.path.join(carpeta, f"{prefijo}{sufijo}.png")
             if not os.path.exists(ruta):
                 continue
+            t = tamano_muro if tipo == "muro" else tamano
             try:
                 if PIL_DISPONIBLE:
-                    img = Image.open(ruta).convert("RGBA").resize((tamano, tamano), Image.LANCZOS)
+                    img = Image.open(ruta).convert("RGBA").resize((t, t), Image.LANCZOS)
                     self.imagenes_defensas[tipo] = ImageTk.PhotoImage(img)
                 else:
                     img = tk.PhotoImage(file=ruta)
-                    f   = max(1, img.width() // tamano)
+                    f   = max(1, img.width() // t)
                     self.imagenes_defensas[tipo] = img.subsample(f, f) if f > 1 else img
             except Exception as e:
                 print(f"[MAPA] {e}")
@@ -163,6 +179,9 @@ class CanvasMapa:
     # ── Visibilidad de bombas ──
 
     def _bomba_visible(self, fila: int, col: int) -> bool:
+        # Las bombas solo pueden revelarse durante el combate
+        if self._fase_ref[0] != "combate":
+            return False
         for unidad in self.mapa.unidades_vivas():
             if abs(unidad.fila - fila) + abs(unidad.col - col) <= _RANGO_BOMBA:
                 return True

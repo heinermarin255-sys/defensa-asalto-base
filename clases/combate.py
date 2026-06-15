@@ -26,11 +26,15 @@ class MotorCombate:
         self.sonido = callback_sonido
         self.turno = 0
         self.combate_activo = False
+        self.dano_total_atacante = 0    # daño acumulado por el atacante en esta ronda
+        self.unidades_eliminadas = 0    # unidades que mató el defensor en esta ronda
 
     def iniciar(self):
         """Marca el combate como activo."""
         self.combate_activo = True
         self.turno = 0
+        self.dano_total_atacante = 0
+        self.unidades_eliminadas = 0
 
     def ejecutar_turno(self) -> str:
         """
@@ -54,7 +58,8 @@ class MotorCombate:
         # 4. Unidades atacan estructuras adyacentes
         self._unidades_atacan()
 
-        # 5. Limpiar muertos
+        # 5. Contabilizar bajas del defensor antes de limpiar
+        muertas_antes = len([u for u in self.mapa.unidades if u.muerta])
         self.mapa.limpiar_unidades_muertas()
         self._limpiar_estructuras_destruidas()
 
@@ -68,7 +73,6 @@ class MotorCombate:
     def _mover_unidades(self):
         """Mueve cada unidad viva un paso hacia su objetivo."""
         for unidad in self.mapa.unidades_vivas():
-            # Determinar destino
             if hasattr(unidad, 'prioriza_defensas') and unidad.prioriza_defensas:
                 destino = self._buscar_defensa_mas_cercana(unidad)
             else:
@@ -76,19 +80,31 @@ class MotorCombate:
 
             df, dc = destino
 
-            # Función de colisión: evitar celdas con estructuras (excepto trampa)
-            def celda_bloqueada(fila, col):
+            es_gigante = hasattr(unidad, 'ignora_muros') and unidad.ignora_muros
+
+            def celda_bloqueada(fila, col, _gigante=es_gigante):
                 est = self.mapa.obtener_estructura(fila, col)
-                if est and est.tipo != "trampa" and est.esta_viva():
-                    return True
-                return False
+                if not est or not est.esta_viva():
+                    return False
+                if est.tipo == "trampa":
+                    return False
+                # El gigante ignora muros como obstáculo al moverse
+                # (solo los ataca si no hay otra ruta)
+                if _gigante and est.tipo == "muro":
+                    return False
+                return True
 
             unidad.mover_hacia(df, dc, celda_bloqueada)
 
     def _buscar_defensa_mas_cercana(self, unidad) -> tuple:
-        """Busca la torre o defensa más cercana a la unidad."""
-        torres = self.mapa.todas_las_torres()
+        """
+        Busca la torre o defensa más cercana al gigante.
+        Excluye la base central para que siempre priorice defensas primero.
+        """
+        torres = [t for t in self.mapa.todas_las_torres()
+                  if t.tipo != "base" and t.tipo != "muro"]
         if not torres:
+            # Si no quedan defensas, entonces va a por la base
             return (BASE_FILA, BASE_COL)
 
         def distancia(t):
@@ -124,22 +140,18 @@ class MotorCombate:
             if not torre.puede_atacar():
                 continue
 
-            # Buscar unidades en alcance
             unidades_en_rango = self.mapa.obtener_unidades_en_alcance(
                 torre.fila, torre.col, torre.alcance
             )
 
             if not unidades_en_rango:
-                # Reiniciar daño acumulado de Torre Infernal si no hay objetivo
                 if torre.tipo == "torre_infernal" and torre.objetivo_actual is not None:
                     torre.resetear_dano()
                     torre.objetivo_actual = None
                 continue
 
-            # Seleccionar objetivo: la unidad con menos vida (prioriza matar)
             objetivo = min(unidades_en_rango, key=lambda u: u.vida)
 
-            # Torre Infernal: rastrear si cambió de objetivo
             if torre.tipo == "torre_infernal":
                 if torre.objetivo_actual != objetivo:
                     torre.resetear_dano()
@@ -147,13 +159,17 @@ class MotorCombate:
 
             dano = torre.calcular_dano()
 
-            # Torre de Magos: daño en área
             if hasattr(torre, 'es_area') and torre.es_area:
                 for u in unidades_en_rango:
+                    vida_antes = u.vida
                     u.recibir_dano(dano)
+                    self.unidades_eliminadas += (1 if u.muerta else 0)
                 self.log(f"🔮 {torre.nombre} daña a {len(unidades_en_rango)} tropas ({dano} c/u)")
             else:
+                vida_antes = objetivo.vida
                 objetivo.recibir_dano(dano)
+                if objetivo.muerta:
+                    self.unidades_eliminadas += 1
                 self.log(f"🏹 {torre.nombre} → {objetivo.nombre}: {dano} daño")
 
             self.sonido("disparo")
@@ -163,21 +179,63 @@ class MotorCombate:
     # ──────────────────────────────────────────
 
     def _unidades_atacan(self):
-        """Las unidades atacan estructuras adyacentes o en rango."""
         for unidad in self.mapa.unidades_vivas():
-            # Arqueras pueden atacar a distancia
             if hasattr(unidad, 'alcance_ataque'):
                 estructura = self._buscar_estructura_en_rango(unidad)
             else:
-                estructura = self.mapa.obtener_estructura_adyacente(unidad.fila, unidad.col)
+                estructura = self._objetivo_adyacente(unidad)
 
             if estructura and estructura.esta_viva():
-                unidad.atacar_estructura(estructura)
+                dano_aplicado = unidad.atacar_estructura(estructura)
+                self.dano_total_atacante += dano_aplicado
                 self.log(f"⚔️  {unidad.nombre} ataca {estructura.nombre}: {unidad.dano} daño")
-
                 if estructura.destruida:
                     self.log(f"💀 ¡{estructura.nombre} destruida!")
                     self.sonido("explosion")
+
+    def _objetivo_adyacente(self, unidad):
+        """
+        Retorna la estructura adyacente de mayor prioridad para atacar.
+        Prioridad: torres/defensas > muros (solo si bloquean) > base.
+        """
+        direcciones = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        candidatos = []
+        for df, dc in direcciones:
+            nf, nc = unidad.fila + df, unidad.col + dc
+            if self.mapa.celda_valida(nf, nc):
+                est = self.mapa.celdas[nf][nc]
+                if est and est.esta_viva() and est.tipo != "trampa":
+                    candidatos.append(est)
+
+        if not candidatos:
+            return None
+
+        objetivo_previo = getattr(unidad, "_objetivo_actual", None)
+        if objetivo_previo and objetivo_previo in candidatos and objetivo_previo.esta_viva():
+            return objetivo_previo
+
+        es_gigante = hasattr(unidad, 'prioriza_defensas') and unidad.prioriza_defensas
+
+        def prioridad(e):
+            if es_gigante:
+                # El gigante ataca primero torres, luego muros si bloquean, base al final
+                if e.tipo.startswith("torre") or e.tipo == "canon":
+                    return 0
+                if e.tipo == "muro":
+                    return 1
+                if e.tipo == "base":
+                    return 3
+                return 2
+            else:
+                if e.tipo == "base":
+                    return 0
+                if e.tipo.startswith("torre") or e.tipo == "canon":
+                    return 1
+                return 2
+
+        objetivo = min(candidatos, key=prioridad)
+        unidad._objetivo_actual = objetivo
+        return objetivo
 
     def _buscar_estructura_en_rango(self, unidad):
         """Busca la estructura más cercana dentro del alcance de la unidad."""
