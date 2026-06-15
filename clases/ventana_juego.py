@@ -15,7 +15,8 @@ from clases.combate import MotorCombate
 from utils.constantes import (
     COLOR_FONDO, COLOR_PANEL, COLOR_ACENTO, COLOR_TEXTO, COLOR_BOTON,
     DEFENSAS, TROPAS, FACCIONES, INTERVALO_COMBATE_MS,
-    FILAS, COLUMNAS, BASE_FILA, BASE_COL
+    FILAS, COLUMNAS, BASE_FILA, BASE_COL,
+    BONO_DANO_DIVISOR, BONO_BAJA,
 )
 
 
@@ -41,6 +42,7 @@ class VentanaJuego:
         # Estado interno
         self.mapa = Mapa()
         self.fase = "construccion"        # 'construccion', 'ataque', 'combate'
+        self._fase_ref = ["construccion"] # lista mutable compartida con CanvasMapa
         self.item_seleccionado = None     # qué se va a construir/desplegar
         self.defensor = None
         self.atacante = None
@@ -89,7 +91,8 @@ class VentanaJuego:
             frame_mapa, self.mapa,
             self.defensor.faccion,
             callback_clic=self._on_clic_mapa,
-            faccion_atacante=self.atacante.faccion
+            faccion_atacante=self.atacante.faccion,
+            fase_ref=self._fase_ref
         )
 
         # Panel de log derecho
@@ -125,8 +128,8 @@ class VentanaJuego:
                  font=("Courier", 9),
                  bg=COLOR_PANEL, fg=COLOR_TEXTO).pack(side="left", padx=(4, 20))
 
-        # Gemas J1
-        self.lbl_gemas_j1 = tk.Label(hud, text=f"💎 {self.j1.gemas}",
+        # Dinero J1
+        self.lbl_gemas_j1 = tk.Label(hud, text=f"💰 {self.j1.gemas}",
                                       font=("Courier", 11),
                                       bg=COLOR_PANEL, fg="#88ddff")
         self.lbl_gemas_j1.pack(side="left", padx=(0, 30))
@@ -137,8 +140,8 @@ class VentanaJuego:
                                   bg=COLOR_PANEL, fg="white")
         self.lbl_fase.pack(side="left", expand=True)
 
-        # Gemas J2
-        self.lbl_gemas_j2 = tk.Label(hud, text=f"💎 {self.j2.gemas}",
+        # Dinero J2
+        self.lbl_gemas_j2 = tk.Label(hud, text=f"💰 {self.j2.gemas}",
                                       font=("Courier", 11),
                                       bg=COLOR_PANEL, fg="#88ddff")
         self.lbl_gemas_j2.pack(side="right", padx=(30, 0))
@@ -168,7 +171,7 @@ class VentanaJuego:
         self._poblar_panel_construccion()
         self._log(f"=== FASE DE CONSTRUCCIÓN ===")
         self._log(f"{self.defensor.username} construye su base.")
-        self._log(f"Gemas disponibles: {self.defensor.gemas}")
+        self._log(f"Dinero disponible: {self.defensor.gemas}")
 
     def _poblar_panel_construccion(self):
         """Llena el panel lateral con botones de estructuras."""
@@ -192,7 +195,7 @@ class VentanaJuego:
         for nombre, datos in DEFENSAS.items():
             btn = tk.Button(
                 self.panel_lateral,
-                text=f"{nombre}\n💎{datos['costo']}",
+                text=f"{nombre}\n💰{datos['costo']}",
                 font=("Courier", 8),
                 bg=COLOR_BOTON, fg="white",
                 relief="flat", cursor="hand2",
@@ -273,7 +276,7 @@ class VentanaJuego:
         for nombre, datos in TROPAS.items():
             btn = tk.Button(
                 self.panel_lateral,
-                text=f"{nombre}\n💎{datos['costo']}",
+                text=f"{nombre}\n💰{datos['costo']}",
                 font=("Courier", 8),
                 bg=COLOR_BOTON, fg="white",
                 relief="flat", cursor="hand2",
@@ -327,7 +330,7 @@ class VentanaJuego:
 
         # Verificar gemas
         if self.defensor.gemas < costo:
-            self._log(f"❌ Sin gemas para {self.item_seleccionado['nombre']} (costo: {costo})")
+            self._log(f"❌ Sin dinero para {self.item_seleccionado['nombre']} (costo: {costo})")
             return
 
         # No sobre la base
@@ -356,7 +359,7 @@ class VentanaJuego:
         costo = datos["costo"]
 
         if self.atacante.gemas < costo:
-            self._log(f"❌ Sin gemas para {self.item_seleccionado['nombre']} (costo: {costo})")
+            self._log(f"❌ Sin dinero para {self.item_seleccionado['nombre']} (costo: {costo})")
             return
 
         unidad = crear_unidad(self.item_seleccionado["tipo"], fila, col)
@@ -422,7 +425,7 @@ class VentanaJuego:
             self._finalizar_ronda(resultado)
 
     def _finalizar_ronda(self, resultado: str):
-        """Procesa el resultado de la ronda."""
+        """Procesa el resultado de la ronda y asigna bonos de dinero."""
         if resultado == "atacante_gana":
             ganador = self.atacante
             perdedor = self.defensor
@@ -439,9 +442,24 @@ class VentanaJuego:
         self._log(f"\n🏆 ¡{ganador.username} GANÓ LA RONDA!")
         self._log(razon)
 
+        # Bonos de dinero para la siguiente ronda
+        if self.motor_combate:
+            dano_total = self.motor_combate.dano_total_atacante
+            bajas = self.motor_combate.unidades_eliminadas
+
+            bono_atacante = dano_total // BONO_DANO_DIVISOR
+            bono_defensor = bajas * BONO_BAJA
+
+            if bono_atacante > 0:
+                self.atacante.agregar_bonus(bono_atacante)
+                self._log(f"💰 Bono atacante: +{bono_atacante} (daño infligido)")
+
+            if bono_defensor > 0:
+                self.defensor.agregar_bonus(bono_defensor)
+                self._log(f"💰 Bono defensor: +{bono_defensor} ({bajas} bajas)")
+
         ganador.ganar_ronda()
 
-        # Destruir el frame actual y notificar
         self.padre.after(1500, lambda: self._notificar_resultado(ganador, perdedor))
 
     def _notificar_resultado(self, ganador, perdedor):
@@ -456,9 +474,9 @@ class VentanaJuego:
     # ──────────────────────────────────────────
 
     def _actualizar_gemas(self):
-        """Actualiza los labels de gemas en el HUD."""
-        self.lbl_gemas_j1.config(text=f"💎 {self.j1.gemas}")
-        self.lbl_gemas_j2.config(text=f"💎 {self.j2.gemas}")
+        """Actualiza los labels de dinero en el HUD."""
+        self.lbl_gemas_j1.config(text=f"💰 {self.j1.gemas}")
+        self.lbl_gemas_j2.config(text=f"💰 {self.j2.gemas}")
 
     def _log(self, mensaje: str):
         """Agrega un mensaje al panel de log."""

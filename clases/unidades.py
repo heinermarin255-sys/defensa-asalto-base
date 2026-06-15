@@ -24,6 +24,7 @@ class UnidadBase:
         self.tipo = tipo
         self.muerta = False
         self.turnos_sin_mover = 0       # para detectar unidades bloqueadas
+        self._turno_interno = 0         # contador para velocidades fraccionarias
 
     def recibir_dano(self, cantidad: int):
         """Aplica daño a la unidad."""
@@ -38,12 +39,25 @@ class UnidadBase:
     def porcentaje_vida(self) -> float:
         return self.vida / self.vida_max if self.vida_max > 0 else 0.0
 
+    def puede_moverse_este_turno(self) -> bool:
+        """
+        Indica si la unidad se mueve en el turno actual.
+        Permite simular velocidades menores a 1 casilla/turno mediante
+        un intervalo de espera entre movimientos.
+        """
+        return True
+
     def mover_hacia(self, fila_destino: int, col_destino: int, mapa_ocupado) -> bool:
         """
         Mueve la unidad un paso hacia el destino.
         mapa_ocupado: función que recibe (fila, col) y dice si está bloqueada.
         Retorna True si se movió.
         """
+        self._turno_interno += 1
+
+        if not self.puede_moverse_este_turno():
+            return False
+
         moved = False
         pasos = self.velocidad
 
@@ -54,24 +68,20 @@ class UnidadBase:
             if df == 0 and dc == 0:
                 break
 
-            # Intentar moverse hacia el destino
             nueva_fila = self.fila
             nueva_col = self.col
 
-            # Priorizar el eje con mayor distancia
             if abs(df) >= abs(dc):
                 nueva_fila += (1 if df > 0 else -1)
             else:
                 nueva_col += (1 if dc > 0 else -1)
 
-            # Verificar si la celda está libre
             if not mapa_ocupado(nueva_fila, nueva_col):
                 self.fila = nueva_fila
                 self.col = nueva_col
                 moved = True
                 self.turnos_sin_mover = 0
             else:
-                # Intentar el otro eje
                 nueva_fila2 = self.fila
                 nueva_col2 = self.col
 
@@ -124,9 +134,14 @@ class Duende(UnidadBase):
 
 class Gigante(UnidadBase):
     """
-    Tropa lenta con mucha vida.
-    Prioriza atacar defensas sobre la base.
+    Tropa lenta y resistente.
+    Prioriza atacar defensas; ignora muros salvo que le bloqueen el paso
+    completamente. Deja el ayuntamiento para el final.
+    Se mueve una casilla cada 2 turnos.
     """
+
+    # Intervalo en turnos entre cada movimiento (1 = cada turno, 2 = cada 2, etc.)
+    INTERVALO_MOVIMIENTO = 2
 
     def __init__(self, fila: int, col: int):
         super().__init__(
@@ -136,6 +151,10 @@ class Gigante(UnidadBase):
             costo=80, tipo="gigante"
         )
         self.prioriza_defensas = True
+        self.ignora_muros = True        # intenta rodear muros en lugar de atacarlos
+
+    def puede_moverse_este_turno(self) -> bool:
+        return (self._turno_interno % self.INTERVALO_MOVIMIENTO) == 1
 
 
 class Arquera(UnidadBase):
@@ -148,7 +167,7 @@ class Arquera(UnidadBase):
         super().__init__(
             fila, col,
             nombre="Arquera",
-            vida=60, dano=20, velocidad=1,
+            vida=60, dano=20, velocidad=2,
             costo=50, tipo="arquera"
         )
         self.alcance_ataque = 2
@@ -159,7 +178,12 @@ class Arquera(UnidadBase):
 
 
 class Pekka(UnidadBase):
-    """Tropa más poderosa del juego: mucha vida y mucho daño."""
+    """
+    Tropa más poderosa del juego: mucha vida y mucho daño.
+    Se mueve una casilla cada 3 turnos.
+    """
+
+    INTERVALO_MOVIMIENTO = 3
 
     def __init__(self, fila: int, col: int):
         super().__init__(
@@ -168,6 +192,9 @@ class Pekka(UnidadBase):
             vida=300, dano=50, velocidad=1,
             costo=150, tipo="pekka"
         )
+
+    def puede_moverse_este_turno(self) -> bool:
+        return (self._turno_interno % self.INTERVALO_MOVIMIENTO) == 1
 
 
 # ──────────────────────────────────────────
