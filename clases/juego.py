@@ -75,6 +75,7 @@ class Juego:
         botones = [
             ("🎮  NUEVA PARTIDA", self._iniciar_flujo_partida, COLOR_ACENTO),
             ("🏆  RANKINGS", self._mostrar_rankings, COLOR_BOTON),
+            (self._texto_boton_musica(), self._alternar_musica, COLOR_BOTON),
             ("❌  SALIR", self.ventana.quit, "#333333"),
         ]
 
@@ -96,6 +97,16 @@ class Juego:
             font=("Courier", 9),
             bg=COLOR_FONDO, fg="#555555"
         ).pack(side="bottom", pady=15)
+
+    def _texto_boton_musica(self):
+        """Texto del boton de musica segun el estado actual."""
+        estado = "ON" if self.gestor_sonido.musica_habilitada else "OFF"
+        return f"🎵  MUSICA: {estado}"
+
+    def _alternar_musica(self):
+        """Activa o desactiva la musica desde el menu principal."""
+        self.gestor_sonido.alternar_musica()
+        self.mostrar_menu_principal()
 
     # ──────────────────────────────────────────
     # FLUJO DE PARTIDA

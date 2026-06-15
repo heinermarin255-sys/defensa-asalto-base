@@ -44,6 +44,7 @@ class VentanaJuego:
         self.fase = "construccion"        # 'construccion', 'ataque', 'combate'
         self._fase_ref = ["construccion"] # lista mutable compartida con CanvasMapa
         self.item_seleccionado = None     # qué se va a construir/desplegar
+        self.modo_eliminar = False
         self.defensor = None
         self.atacante = None
         self.motor_combate = None
@@ -163,6 +164,8 @@ class VentanaJuego:
         """Prepara la fase de construcción del defensor."""
         self.fase = "construccion"
         self._fase_ref[0] = "construccion"
+        self.modo_eliminar = False
+        self.gestor_sonido.reproducir_musica_estado("construccion")
         self.defensor.iniciar_como_defensor()
         self.atacante.iniciar_como_atacante()
 
@@ -208,6 +211,16 @@ class VentanaJuego:
         # Separador
         tk.Frame(self.panel_lateral, bg="#333", height=1).pack(fill="x", pady=8)
 
+        tk.Button(
+            self.panel_lateral,
+            text="ELIMINAR\nDEFENSA",
+            font=("Courier", 9, "bold"),
+            bg="#884400", fg="white",
+            relief="flat", cursor="hand2",
+            pady=6,
+            command=self._activar_modo_eliminar
+        ).pack(fill="x", pady=4)
+
         # Botón para terminar construcción
         tk.Button(
             self.panel_lateral,
@@ -228,6 +241,7 @@ class VentanaJuego:
 
     def _seleccionar_item(self, nombre: str, tipo: str):
         """Selecciona el ítem a construir."""
+        self.modo_eliminar = False
         self.item_seleccionado = {"nombre": nombre, "tipo": tipo}
         self.lbl_seleccionado.config(
             text=f"Seleccionado:\n{nombre}",
@@ -249,6 +263,8 @@ class VentanaJuego:
         """Prepara la fase de ataque."""
         self.fase = "ataque"
         self._fase_ref[0] = "ataque"
+        self.modo_eliminar = False
+        self.gestor_sonido.reproducir_musica_estado("ataque")
         self.lbl_fase.config(text=f"⚔️  ATAQUE — {self.atacante.username}")
         self._actualizar_gemas()
         self._poblar_panel_ataque()
@@ -289,6 +305,16 @@ class VentanaJuego:
 
         tk.Button(
             self.panel_lateral,
+            text="ELIMINAR\nTROPA",
+            font=("Courier", 9, "bold"),
+            bg="#884400", fg="white",
+            relief="flat", cursor="hand2",
+            pady=6,
+            command=self._activar_modo_eliminar
+        ).pack(fill="x", pady=4)
+
+        tk.Button(
+            self.panel_lateral,
             text="⚔️  INICIAR\nCOMBATE",
             font=("Courier", 9, "bold"),
             bg="#660000", fg="white",
@@ -304,9 +330,21 @@ class VentanaJuego:
 
     def _seleccionar_tropa(self, nombre: str, tipo: str):
         """Selecciona la tropa a desplegar."""
+        self.modo_eliminar = False
         self.item_seleccionado = {"nombre": nombre, "tipo": tipo}
         for n, btn in self.botones_tropa.items():
             btn.config(bg=COLOR_ACENTO if n == nombre else COLOR_BOTON)
+
+    def _activar_modo_eliminar(self):
+        """Permite eliminar una defensa o tropa colocada y devolver su costo."""
+        self.modo_eliminar = True
+        self.item_seleccionado = None
+        if hasattr(self, "lbl_seleccionado") and self.lbl_seleccionado.winfo_exists():
+            self.lbl_seleccionado.config(
+                text="Modo eliminar:\nhaz clic en una defensa",
+                fg="#ffaa00"
+            )
+        self._log("Modo eliminar activado. Haz clic en lo que quieres quitar.")
 
     # ──────────────────────────────────────────
     # CLIC EN EL MAPA
@@ -314,6 +352,13 @@ class VentanaJuego:
 
     def _on_clic_mapa(self, fila: int, col: int):
         """Maneja el clic en una celda del mapa."""
+        if self.modo_eliminar:
+            if self.fase == "construccion":
+                self._eliminar_estructura(fila, col)
+            elif self.fase == "ataque":
+                self._eliminar_tropa(fila, col)
+            return
+
         if not self.item_seleccionado:
             return
 
@@ -370,6 +415,33 @@ class VentanaJuego:
         else:
             self._log(f"❌ No se puede desplegar en ({fila},{col})")
 
+    def _eliminar_estructura(self, fila: int, col: int):
+        """Elimina una defensa colocada y devuelve su costo."""
+        estructura = self.mapa.obtener_estructura(fila, col)
+        if not estructura or estructura.tipo == "base":
+            self._log("❌ Selecciona una defensa construida para eliminar.")
+            return
+
+        costo = getattr(estructura, "costo", 0)
+        self.mapa.eliminar_estructura(fila, col)
+        self.defensor.gemas += costo
+        self._actualizar_gemas()
+        self.canvas_mapa.actualizar()
+        self._log(f"↩ {estructura.nombre} eliminada. Dinero devuelto: {costo}")
+
+    def _eliminar_tropa(self, fila: int, col: int):
+        """Elimina una tropa desplegada y devuelve su costo."""
+        unidad = self.mapa.eliminar_unidad(fila, col)
+        if not unidad:
+            self._log("❌ Selecciona una tropa desplegada para eliminar.")
+            return
+
+        costo = getattr(unidad, "costo", 0)
+        self.atacante.gemas += costo
+        self._actualizar_gemas()
+        self.canvas_mapa.actualizar()
+        self._log(f"↩ {unidad.nombre} eliminada. Dinero devuelto: {costo}")
+
     # ──────────────────────────────────────────
     # COMBATE AUTOMÁTICO
     # ──────────────────────────────────────────
@@ -382,6 +454,7 @@ class VentanaJuego:
 
         self.fase = "combate"
         self._fase_ref[0] = "combate"
+        self.gestor_sonido.reproducir_musica_estado("combate")
         self.lbl_fase.config(text="💥 COMBATE EN PROGRESO")
 
         # Deshabilitar solo los botones del panel (Label y Frame no soportan state)
@@ -428,12 +501,14 @@ class VentanaJuego:
             ganador = self.atacante
             perdedor = self.defensor
             razon = "¡La base fue destruida!"
-            self.gestor_sonido.reproducir("explosion")
+            self.gestor_sonido.detener_musica()
+            self.gestor_sonido.reproducir("victoria")
         else:
             ganador = self.defensor
             perdedor = self.atacante
             razon = "¡Todas las tropas fueron eliminadas!"
-            self.gestor_sonido.reproducir("victoria")
+            self.gestor_sonido.detener_musica()
+            self.gestor_sonido.reproducir("derrota")
 
         self._log(f"\n🏆 ¡{ganador.username} GANÓ LA RONDA!")
         self._log(razon)

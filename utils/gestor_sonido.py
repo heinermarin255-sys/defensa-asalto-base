@@ -36,6 +36,7 @@ class GestorSonido:
         # Diccionario de sonidos cargados
         self.sonidos = {}
         self.musica_actual = None
+        self.musica_habilitada = True
         self.volumen_musica = 0.25
         self.volumen_efectos = 0.45
         self._cargar_sonidos()
@@ -71,7 +72,7 @@ class GestorSonido:
         Reproduce un efecto de sonido por nombre.
         Si el sonido no existe o pygame no está activo, no hace nada.
         """
-        if not self.activo:
+        if not self.activo or not self.musica_habilitada:
             return
         if nombre in self.sonidos:
             try:
@@ -112,6 +113,13 @@ class GestorSonido:
 
         self.musica_actual = archivo
         self.reproducir_musica(archivo, loop=True)
+
+    def alternar_musica(self) -> bool:
+        """Activa o desactiva la musica de fondo."""
+        self.musica_habilitada = not self.musica_habilitada
+        if not self.musica_habilitada:
+            self.detener_musica()
+        return self.musica_habilitada
 
     def detener_musica(self):
         """Detiene la música de fondo."""

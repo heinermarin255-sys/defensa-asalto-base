@@ -117,6 +117,17 @@ class Mapa:
         """Elimina las unidades muertas de la lista."""
         self.unidades = [u for u in self.unidades if u.esta_viva()]
 
+    def eliminar_unidad(self, fila: int, col: int):
+        """
+        Elimina y retorna una unidad viva ubicada en la posicion indicada.
+        Retorna None si no hay unidad para eliminar.
+        """
+        for unidad in self.unidades:
+            if unidad.esta_viva() and unidad.fila == fila and unidad.col == col:
+                self.unidades.remove(unidad)
+                return unidad
+        return None
+
     # ──────────────────────────────────────────
     # Búsqueda de objetivos para torres
     # ──────────────────────────────────────────
