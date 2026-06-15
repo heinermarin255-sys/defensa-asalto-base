@@ -102,6 +102,17 @@ IMAGENES_DEFENSAS = {
     "torre_magos": "Mago",
     "torre_infernal": "Infernal",
     "canon": "Cañon",
+    "muro": "Muro",
+    "trampa": "Bomba",
+}
+
+# Nombre base del archivo para cada tipo de tropa.
+# El archivo final es: {prefijo}{sufijo_faccion}.png  (ej: DuendeN.png)
+IMAGENES_UNIDADES = {
+    "duende": "Duende",
+    "gigante": "Gigante",
+    "arquera": "Arquera",
+    "pekka": "pekka",
 }
 
 # ──────────────────────────────────────────

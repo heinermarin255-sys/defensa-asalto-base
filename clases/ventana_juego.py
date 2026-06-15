@@ -88,7 +88,8 @@ class VentanaJuego:
         self.canvas_mapa = CanvasMapa(
             frame_mapa, self.mapa,
             self.defensor.faccion,
-            callback_clic=self._on_clic_mapa
+            callback_clic=self._on_clic_mapa,
+            faccion_atacante=self.atacante.faccion
         )
 
         # Panel de log derecho

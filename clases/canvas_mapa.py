@@ -10,7 +10,7 @@ from utils.constantes import (
     FILAS, COLUMNAS, TAMANO_CELDA,
     COLOR_CELDA_VACIA, COLOR_CELDA_BORDE, COLOR_ACENTO,
     FACCIONES, BASE_FILA, BASE_COL,
-    SUFIJO_FACCION, IMAGENES_DEFENSAS
+    SUFIJO_FACCION, IMAGENES_DEFENSAS, IMAGENES_UNIDADES
 )
 
 # Pillow se usa (si está disponible) para escalar las imágenes de las
@@ -33,17 +33,21 @@ class CanvasMapa:
     ALTO = FILAS * TAMANO_CELDA
 
     def __init__(self, padre: tk.Widget, mapa, faccion_defensor: str,
-                 callback_clic=None):
+                 callback_clic=None, faccion_atacante: str = None):
         """
         Args:
             padre: Frame contenedor.
             mapa: Instancia de Mapa.
-            faccion_defensor: Nombre de la facción del defensor.
+            faccion_defensor: Nombre de la facción del defensor (para las defensas).
             callback_clic: función(fila, col) al hacer clic en el mapa.
+            faccion_atacante: Nombre de la facción del atacante (para las tropas).
+                Si no se indica, se usa la misma facción del defensor.
         """
         self.mapa = mapa
         self.faccion = faccion_defensor
+        self.faccion_atacante = faccion_atacante or faccion_defensor
         self.colores = FACCIONES[faccion_defensor]
+        self.colores_atacante = FACCIONES[self.faccion_atacante]
         self.callback_clic = callback_clic
         self.celda_hover = None
 
@@ -65,6 +69,10 @@ class CanvasMapa:
         # Cargar las imágenes de las defensas según la facción del defensor
         self.imagenes_defensas = {}
         self._cargar_imagenes_defensas()
+
+        # Cargar las imágenes de las tropas según la facción del atacante
+        self.imagenes_unidades = {}
+        self._cargar_imagenes_unidades()
 
         self.dibujar()
 
@@ -99,9 +107,35 @@ class CanvasMapa:
             except Exception as e:
                 print(f"[MAPA] No se pudo cargar la imagen {ruta}: {e}")
 
-    # ──────────────────────────────────────────
-    # DIBUJO PRINCIPAL
-    # ──────────────────────────────────────────
+    def _cargar_imagenes_unidades(self):
+        """
+        Carga las imágenes de las cartas de tropa correspondientes a la
+        facción del atacante (sufijo N = Naturaleza, F = Futurista,
+        M = Medieval) y las escala al tamaño de una celda del mapa.
+        """
+        sufijo = SUFIJO_FACCION.get(self.faccion_atacante, "M")
+        carpeta = os.path.join(os.path.dirname(__file__), "..", "imagenes")
+        tamano = TAMANO_CELDA - 6  # pequeño margen respecto al borde de la celda
+
+        for tipo, prefijo in IMAGENES_UNIDADES.items():
+            ruta = os.path.join(carpeta, f"{prefijo}{sufijo}.png")
+
+            if not os.path.exists(ruta):
+                continue
+
+            try:
+                if PIL_DISPONIBLE:
+                    imagen = Image.open(ruta).convert("RGBA")
+                    imagen = imagen.resize((tamano, tamano), Image.LANCZOS)
+                    self.imagenes_unidades[tipo] = ImageTk.PhotoImage(imagen)
+                else:
+                    imagen = tk.PhotoImage(file=ruta)
+                    factor = max(1, imagen.width() // tamano)
+                    if factor > 1:
+                        imagen = imagen.subsample(factor, factor)
+                    self.imagenes_unidades[tipo] = imagen
+            except Exception as e:
+                print(f"[MAPA] No se pudo cargar la imagen {ruta}: {e}")
 
     def dibujar(self):
         """Redibuja todo el mapa."""
@@ -221,12 +255,23 @@ class CanvasMapa:
         cx = x0 + TAMANO_CELDA // 2
         cy = y0 + TAMANO_CELDA // 2
 
+        # Si existe una imagen de carta para esta tropa, usarla
+        if unidad.tipo in self.imagenes_unidades:
+            self.canvas.create_image(cx, cy - 2, image=self.imagenes_unidades[unidad.tipo])
+            self._dibujar_barra_vida(
+                x0, y0 + TAMANO_CELDA - 7,
+                x0 + TAMANO_CELDA, y0 + TAMANO_CELDA - 2,
+                unidad.porcentaje_vida()
+            )
+            return
+
+        # ── Dibujo de respaldo (sin imagen disponible) ──
         # Círculo de la unidad
         radio = TAMANO_CELDA // 3
         self.canvas.create_oval(
             cx - radio, cy - radio - 4,
             cx + radio, cy + radio - 4,
-            fill=self.colores["color_tropa"],
+            fill=self.colores_atacante["color_tropa"],
             outline="white", width=1
         )
 
