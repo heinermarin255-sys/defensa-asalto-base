@@ -35,6 +35,9 @@ class GestorSonido:
 
         # Diccionario de sonidos cargados
         self.sonidos = {}
+        self.musica_actual = None
+        self.volumen_musica = 0.25
+        self.volumen_efectos = 0.45
         self._cargar_sonidos()
 
     def _cargar_sonidos(self):
@@ -49,7 +52,6 @@ class GestorSonido:
             "victoria": "victoria.wav",
             "derrota": "derrota.wav",
             "clic": "clic.wav",
-            "construccion": "construccion.wav",
         }
 
         carpeta = os.path.join(os.path.dirname(__file__), "..", "sonidos")
@@ -58,7 +60,9 @@ class GestorSonido:
             ruta = os.path.join(carpeta, archivo)
             if os.path.exists(ruta):
                 try:
-                    self.sonidos[nombre] = pygame.mixer.Sound(ruta)
+                    sonido = pygame.mixer.Sound(ruta)
+                    sonido.set_volume(self.volumen_efectos)
+                    self.sonidos[nombre] = sonido
                 except Exception as e:
                     print(f"[SONIDO] No se pudo cargar {archivo}: {e}")
 
@@ -86,15 +90,43 @@ class GestorSonido:
         if os.path.exists(ruta):
             try:
                 pygame.mixer.music.load(ruta)
+                pygame.mixer.music.set_volume(self.volumen_musica)
                 pygame.mixer.music.play(-1 if loop else 0)
             except Exception as e:
                 print(f"[SONIDO] Error al reproducir música: {e}")
+
+    def reproducir_musica_estado(self, estado: str):
+        """
+        Reproduce musica segun el estado del juego.
+        Estados esperados: construccion, ataque, combate.
+        """
+        musica_por_estado = {
+            "construccion": "construccion.wav",
+            "ataque": "ataque.wav",
+            "combate": "ataque.wav",
+        }
+
+        archivo = musica_por_estado.get(estado)
+        if not archivo or archivo == self.musica_actual:
+            return
+
+        self.musica_actual = archivo
+        self.reproducir_musica(archivo, loop=True)
 
     def detener_musica(self):
         """Detiene la música de fondo."""
         if self.activo:
             try:
                 pygame.mixer.music.stop()
+                self.musica_actual = None
+            except Exception:
+                pass
+
+    def detener_efectos(self):
+        """Detiene efectos largos como victoria o derrota."""
+        if self.activo:
+            try:
+                pygame.mixer.stop()
             except Exception:
                 pass
 

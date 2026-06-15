@@ -269,6 +269,7 @@ class Juego:
 
     def _siguiente_ronda(self, frame_resultado):
         """Prepara la siguiente ronda alternando el rol de defensor."""
+        self.gestor_sonido.detener_efectos()
         frame_resultado.destroy()
         self.ronda_actual += 1
         # Alternar: si el 1 fue defensor, ahora el 2 lo es
@@ -281,6 +282,7 @@ class Juego:
 
     def _pantalla_final(self, frame_resultado, ganador: Jugador, perdedor: Jugador):
         """Muestra la pantalla de ganador final y guarda estadísticas."""
+        self.gestor_sonido.detener_efectos()
         frame_resultado.destroy()
         self._limpiar_ventana()
 

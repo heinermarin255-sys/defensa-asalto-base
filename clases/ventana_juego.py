@@ -159,6 +159,7 @@ class VentanaJuego:
     def _iniciar_fase_construccion(self):
         """Prepara la fase de construcción del defensor."""
         self.fase = "construccion"
+        self.gestor_sonido.reproducir_musica_estado("construccion")
         self.defensor.iniciar_como_defensor()
         self.atacante.iniciar_como_atacante()
 
@@ -244,6 +245,7 @@ class VentanaJuego:
     def _iniciar_fase_ataque(self):
         """Prepara la fase de ataque."""
         self.fase = "ataque"
+        self.gestor_sonido.reproducir_musica_estado("ataque")
         self.item_seleccionado = None
         self.lbl_fase.config(text=f"⚔️  ATAQUE — {self.atacante.username}")
         self._actualizar_gemas()
@@ -377,6 +379,7 @@ class VentanaJuego:
             return
 
         self.fase = "combate"
+        self.gestor_sonido.reproducir_musica_estado("combate")
         self.canvas_mapa.deshabilitar_clic()
         self.lbl_fase.config(text="💥 COMBATE EN PROGRESO")
 
@@ -424,12 +427,14 @@ class VentanaJuego:
             ganador = self.atacante
             perdedor = self.defensor
             razon = "¡La base fue destruida!"
-            self.gestor_sonido.reproducir("explosion")
+            self.gestor_sonido.detener_musica()
+            self.gestor_sonido.reproducir("victoria")
         else:
             ganador = self.defensor
             perdedor = self.atacante
             razon = "¡Todas las tropas fueron eliminadas!"
-            self.gestor_sonido.reproducir("victoria")
+            self.gestor_sonido.detener_musica()
+            self.gestor_sonido.reproducir("derrota")
 
         self._log(f"\n🏆 ¡{ganador.username} GANÓ LA RONDA!")
         self._log(razon)

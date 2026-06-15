@@ -1,9 +1,14 @@
-Esta carpeta es para los archivos de sonido del juego.
+Esta carpeta es para los archivos de musica y efectos del juego.
 
-Coloca archivos .wav con estos nombres exactos:
-  - disparo.wav
-  - explosion.wav
-  - victoria.wav
-  - derrota.wav
-  - clic.wav
-  - construccion.wav
+Musica de fondo:
+  - construccion.wav: musica tranquila para la fase de construccion.
+  - ataque.wav: musica intensa para la fase de ataque y combate.
+
+Efectos de sonido:
+  - victoria.wav: suena cuando el atacante logra destruir la base.
+  - derrota.wav: suena cuando el atacante no logra destruir la base.
+  - disparo.wav: ataque de una torre.
+  - explosion.wav: destruccion de estructuras o trampas.
+  - clic.wav: interaccion en menus.
+
+Nota: guardar las fuentes o referencias de cada archivo de audio para la documentacion final.
