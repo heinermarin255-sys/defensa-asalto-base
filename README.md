@@ -214,8 +214,5 @@ Archivos esperados en la carpeta `sonidos/`:
 
 ## Posibles mejoras futuras
 
-- Imagenes para muros, trampas y tropas
 - Animaciones durante el combate
-- Mas tipos de defensas y tropas en `utils/constantes.py`
-- Modo de un jugador contra una IA basica
-- Efectos de sonido adicionales y musica de fondo
+

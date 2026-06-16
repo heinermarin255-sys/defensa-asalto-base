@@ -60,13 +60,18 @@ class Muro(EstructuraBase):
     """
     Muro que bloquea el paso de tropas.
     Alta vida, no ataca.
+    Tiene una orientación visual ("horizontal" o "vertical") que se usa
+    para rotar la imagen de la carta y lograr que los muros conecten
+    visualmente entre sí al colocarlos en fila o en columna.
     """
 
-    def __init__(self, fila: int, col: int, costo: int = 20, vida: int = 200):
+    def __init__(self, fila: int, col: int, costo: int = 20, vida: int = 200,
+                 orientacion: str = "horizontal"):
         super().__init__(fila, col, "Muro", vida=vida, tipo="muro")
         self.costo = costo
         self.dano = 0
         self.alcance = 0
+        self.orientacion = orientacion if orientacion in ("horizontal", "vertical") else "horizontal"
 
 
 # ──────────────────────────────────────────
@@ -85,15 +90,11 @@ class Trampa(EstructuraBase):
         self.activada = False
 
     def activar(self) -> int:
-        """
-        Activa la trampa y retorna el daño que inflige.
-        Solo se activa una vez.
-        """
-        if not self.activada:
-            self.activada = True
-            self.destruida = True
-            return self.dano
-        return 0
+        """Activa la trampa y retorna el daño. Solo se activa una vez."""
+        if self.activada:
+            return 0
+        self.activada = True
+        return self.dano
 
 
 # ──────────────────────────────────────────
@@ -202,7 +203,7 @@ class Canon(Torre):
 # FÁBRICA DE ESTRUCTURAS
 # ──────────────────────────────────────────
 
-def crear_estructura(tipo: str, fila: int, col: int):
+def crear_estructura(tipo: str, fila: int, col: int, orientacion: str = "horizontal"):
     """
     Función fábrica: crea la estructura correcta según el tipo.
     Simplifica la creación desde el panel de construcción.
@@ -217,6 +218,10 @@ def crear_estructura(tipo: str, fila: int, col: int):
     }
 
     clase = mapa_clases.get(tipo)
-    if clase:
-        return clase(fila, col)
-    return None
+    if clase is None:
+        return None
+
+    if tipo == "muro":
+        return Muro(fila, col, orientacion=orientacion)
+
+    return clase(fila, col)

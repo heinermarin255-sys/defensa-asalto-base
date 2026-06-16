@@ -46,3 +46,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#py -3.12 main.py

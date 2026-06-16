@@ -29,7 +29,6 @@ _OPACIDAD_TERRENO = {
     "Medieval":   140,
 }
 
-_RANGO_BOMBA = 1
 
 
 class CanvasMapa:
@@ -140,11 +139,42 @@ class CanvasMapa:
         tamano        = TAMANO_CELDA - 6
         tamano_muro   = TAMANO_CELDA - 22   # muros más pequeños visualmente
 
+        # Cachés de la imagen del muro ya rotada, por orientación.
+        # Se llenan de forma diferida (la primera vez que se necesitan)
+        # en _imagen_muro(), para no rotar si nunca se usa esa orientación.
+        self._muro_img_base = None          # PIL.Image sin rotar (solo si hay Pillow)
+        self._muro_tamano = tamano_muro
+        self.imagenes_muro = {}             # {"horizontal": PhotoImage, "vertical": PhotoImage}
+
         for tipo, prefijo in IMAGENES_DEFENSAS.items():
             ruta = os.path.join(carpeta, f"{prefijo}{sufijo}.png")
             if not os.path.exists(ruta):
                 continue
-            t = tamano_muro if tipo == "muro" else tamano
+
+            if tipo == "muro":
+                # El muro se maneja aparte porque necesita poder rotarse
+                # dinámicamente según su orientación (ver _imagen_muro).
+                if PIL_DISPONIBLE:
+                    try:
+                        self._muro_img_base = Image.open(ruta).convert("RGBA").resize(
+                            (tamano_muro, tamano_muro), Image.LANCZOS
+                        )
+                    except Exception as e:
+                        print(f"[MAPA] {e}")
+                else:
+                    # Sin Pillow no se puede rotar: se usa siempre la
+                    # imagen original (orientación horizontal) para ambos casos.
+                    try:
+                        img = tk.PhotoImage(file=ruta)
+                        f = max(1, img.width() // tamano_muro)
+                        img = img.subsample(f, f) if f > 1 else img
+                        self.imagenes_muro["horizontal"] = img
+                        self.imagenes_muro["vertical"] = img
+                    except Exception as e:
+                        print(f"[MAPA] {e}")
+                continue
+
+            t = tamano
             try:
                 if PIL_DISPONIBLE:
                     img = Image.open(ruta).convert("RGBA").resize((t, t), Image.LANCZOS)
@@ -155,6 +185,36 @@ class CanvasMapa:
                     self.imagenes_defensas[tipo] = img.subsample(f, f) if f > 1 else img
             except Exception as e:
                 print(f"[MAPA] {e}")
+
+    def _imagen_muro(self, orientacion: str):
+        """
+        Retorna el PhotoImage del muro para la orientación indicada,
+        rotando la imagen base con Pillow la primera vez que se pide
+        cada orientación y cacheando el resultado.
+        """
+        if orientacion not in ("horizontal", "vertical"):
+            orientacion = "horizontal"
+
+        if orientacion in self.imagenes_muro:
+            return self.imagenes_muro[orientacion]
+
+        if self._muro_img_base is None:
+            return None
+
+        # "horizontal" = imagen tal cual viene (sin rotar).
+        # "vertical"   = la misma imagen rotada 90 grados con Pillow.
+        if orientacion == "vertical":
+            img_rotada = self._muro_img_base.rotate(90, expand=True)
+            # Tras rotar, recortar/ajustar de vuelta al tamaño de celda
+            img_rotada = img_rotada.resize(
+                (self._muro_tamano, self._muro_tamano), Image.LANCZOS
+            )
+        else:
+            img_rotada = self._muro_img_base
+
+        photo = ImageTk.PhotoImage(img_rotada)
+        self.imagenes_muro[orientacion] = photo
+        return photo
 
     def _cargar_imagenes_unidades(self):
         sufijo  = SUFIJO_FACCION.get(self.faccion_atacante, "M")
@@ -175,17 +235,6 @@ class CanvasMapa:
                     self.imagenes_unidades[tipo] = img.subsample(f, f) if f > 1 else img
             except Exception as e:
                 print(f"[MAPA] {e}")
-
-    # ── Visibilidad de bombas ──
-
-    def _bomba_visible(self, fila: int, col: int) -> bool:
-        # Las bombas solo pueden revelarse durante el combate
-        if self._fase_ref[0] != "combate":
-            return False
-        for unidad in self.mapa.unidades_vivas():
-            if abs(unidad.fila - fila) + abs(unidad.col - col) <= _RANGO_BOMBA:
-                return True
-        return False
 
     # ── Dibujo ──
 
@@ -228,7 +277,7 @@ class CanvasMapa:
                 fill="", outline=COLOR_CELDA_BORDE, width=1)
 
         if estructura:
-            if estructura.tipo == "trampa" and not self._bomba_visible(fila, col):
+            if estructura.tipo == "trampa" and not estructura.activada:
                 return
             self._dibujar_estructura(estructura, x0, y0, x1, y1, cx, cy)
         elif es_borde:
@@ -238,7 +287,13 @@ class CanvasMapa:
         tipo       = est.tipo
         porcentaje = est.porcentaje_vida()
 
-        if tipo in self.imagenes_defensas:
+        if tipo == "muro":
+            imagen_muro = self._imagen_muro(getattr(est, "orientacion", "horizontal"))
+            if imagen_muro is not None:
+                self.canvas.create_image(cx, cy - 2, image=imagen_muro)
+                self._dibujar_barra_vida(x0, y1 - 8, x1, y1 - 2, porcentaje)
+                return
+        elif tipo in self.imagenes_defensas:
             self.canvas.create_image(cx, cy - 2, image=self.imagenes_defensas[tipo])
             self._dibujar_barra_vida(x0, y1 - 8, x1, y1 - 2, porcentaje)
             return

@@ -46,6 +46,10 @@ class MotorCombate:
         if not self.combate_activo:
             return "continua"
 
+        # Las trampas que explotaron el turno anterior se retiran ahora,
+        # antes de procesar nada nuevo, para que se vean un turno completo.
+        self._retirar_trampas_explotadas()
+
         # 1. Mover unidades
         self._mover_unidades()
 
@@ -71,7 +75,7 @@ class MotorCombate:
     # ──────────────────────────────────────────
 
     def _mover_unidades(self):
-        """Mueve cada unidad viva un paso hacia su objetivo."""
+        """Mueve cada unidad viva hacia su objetivo."""
         for unidad in self.mapa.unidades_vivas():
             if hasattr(unidad, 'prioriza_defensas') and unidad.prioriza_defensas:
                 destino = self._buscar_defensa_mas_cercana(unidad)
@@ -80,21 +84,31 @@ class MotorCombate:
 
             df, dc = destino
 
-            es_gigante = hasattr(unidad, 'ignora_muros') and unidad.ignora_muros
-
-            def celda_bloqueada(fila, col, _gigante=es_gigante):
+            def celda_bloqueada(fila, col):
                 est = self.mapa.obtener_estructura(fila, col)
                 if not est or not est.esta_viva():
                     return False
-                if est.tipo == "trampa":
-                    return False
-                # El gigante ignora muros como obstáculo al moverse
-                # (solo los ataca si no hay otra ruta)
-                if _gigante and est.tipo == "muro":
-                    return False
-                return True
+                return est.tipo != "trampa"
 
-            unidad.mover_hacia(df, dc, celda_bloqueada)
+            # Si ya está pegada al objetivo, no se mueve: ataca en la
+            # siguiente fase.
+            if abs(unidad.fila - df) + abs(unidad.col - dc) <= 1:
+                continue
+
+            paso = self.mapa.siguiente_paso_bfs(unidad.fila, unidad.col, df, dc)
+
+            if paso is not None:
+                # Hay un camino libre (por ejemplo, un hueco en el cerco):
+                # la unidad lo sigue en lugar de atacar un muro.
+                unidad._turno_interno += 1
+                if unidad.puede_moverse_este_turno():
+                    unidad.fila, unidad.col = paso
+                    unidad.turnos_sin_mover = 0
+            else:
+                # Sin camino libre: avanza directo hacia el destino,
+                # lo que la deja adyacente al obstáculo que la bloquea
+                # para poder atacarlo en la fase de ataque.
+                unidad.mover_hacia(df, dc, celda_bloqueada)
 
     def _buscar_defensa_mas_cercana(self, unidad) -> tuple:
         """
@@ -118,14 +132,15 @@ class MotorCombate:
     # ──────────────────────────────────────────
 
     def _verificar_trampas(self):
-        """Activa trampas donde haya tropas."""
+        """Activa trampas donde haya tropas. Se ven un turno antes de quitarse."""
         for unidad in self.mapa.unidades_vivas():
             trampa = self.mapa.verificar_trampa(unidad.fila, unidad.col)
             if trampa:
                 dano = trampa.activar()
-                unidad.recibir_dano(dano)
-                self.log(f"💥 ¡Trampa! {unidad.nombre} recibe {dano} de daño!")
-                self.sonido("explosion")
+                if dano > 0:
+                    unidad.recibir_dano(dano)
+                    self.log(f"💥 ¡Trampa! {unidad.nombre} recibe {dano} de daño!")
+                    self.sonido("explosion")
 
     # ──────────────────────────────────────────
     # FASE 3: Torres atacan
@@ -258,13 +273,22 @@ class MotorCombate:
     # LIMPIEZA
     # ──────────────────────────────────────────
 
-    def _limpiar_estructuras_destruidas(self):
-        """Elimina del mapa las estructuras que fueron destruidas."""
+    def _retirar_trampas_explotadas(self):
+        """Quita del mapa las trampas que ya se vieron explotar."""
         from utils.constantes import FILAS, COLUMNAS
         for fila in range(FILAS):
             for col in range(COLUMNAS):
                 est = self.mapa.celdas[fila][col]
-                if est and est.destruida and est.tipo != "base":
+                if est and est.tipo == "trampa" and est.activada:
+                    self.mapa.celdas[fila][col] = None
+
+    def _limpiar_estructuras_destruidas(self):
+        """Elimina del mapa las estructuras destruidas (torres, muros)."""
+        from utils.constantes import FILAS, COLUMNAS
+        for fila in range(FILAS):
+            for col in range(COLUMNAS):
+                est = self.mapa.celdas[fila][col]
+                if est and est.destruida and est.tipo not in ("base", "trampa"):
                     self.mapa.celdas[fila][col] = None
 
     # ──────────────────────────────────────────

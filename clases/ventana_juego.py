@@ -44,6 +44,7 @@ class VentanaJuego:
         self.fase = "construccion"        # 'construccion', 'ataque', 'combate'
         self._fase_ref = ["construccion"] # lista mutable compartida con CanvasMapa
         self.item_seleccionado = None     # qué se va a construir/desplegar
+        self.orientacion_muro = "horizontal"  # orientación elegida para el próximo muro
         self.modo_eliminar = False
         self.defensor = None
         self.atacante = None
@@ -211,6 +212,33 @@ class VentanaJuego:
         # Separador
         tk.Frame(self.panel_lateral, bg="#333", height=1).pack(fill="x", pady=8)
 
+        # Orientación del muro: el jugador elige cómo se coloca antes
+        # de hacer clic en el mapa. Afecta solo a la imagen del Muro.
+        tk.Label(self.panel_lateral, text="Orientación del muro",
+                 font=("Courier", 8, "bold"),
+                 bg=COLOR_PANEL, fg=COLOR_TEXTO).pack(pady=(0, 3))
+
+        frame_orientacion = tk.Frame(self.panel_lateral, bg=COLOR_PANEL)
+        frame_orientacion.pack(fill="x", pady=(0, 4))
+
+        self.btn_muro_horizontal = tk.Button(
+            frame_orientacion, text="↔ Horizontal",
+            font=("Courier", 8, "bold"),
+            relief="flat", cursor="hand2",
+            command=lambda: self._seleccionar_orientacion_muro("horizontal")
+        )
+        self.btn_muro_horizontal.pack(side="left", expand=True, fill="x", padx=(0, 2))
+
+        self.btn_muro_vertical = tk.Button(
+            frame_orientacion, text="↕ Vertical",
+            font=("Courier", 8, "bold"),
+            relief="flat", cursor="hand2",
+            command=lambda: self._seleccionar_orientacion_muro("vertical")
+        )
+        self.btn_muro_vertical.pack(side="left", expand=True, fill="x", padx=(2, 0))
+
+        self._actualizar_botones_orientacion()
+
         tk.Button(
             self.panel_lateral,
             text="ELIMINAR\nDEFENSA",
@@ -250,6 +278,26 @@ class VentanaJuego:
         # Resaltar botón activo
         for n, btn in self.botones_defensa.items():
             btn.config(bg=COLOR_ACENTO if n == nombre else COLOR_BOTON)
+
+    def _seleccionar_orientacion_muro(self, orientacion: str):
+        """Cambia la orientación con la que se colocará el próximo muro."""
+        self.orientacion_muro = orientacion
+        self._actualizar_botones_orientacion()
+
+    def _actualizar_botones_orientacion(self):
+        """Resalta el botón de orientación de muro actualmente activo."""
+        if not hasattr(self, "btn_muro_horizontal"):
+            return
+        activo = COLOR_ACENTO
+        inactivo = COLOR_BOTON
+        self.btn_muro_horizontal.config(
+            bg=activo if self.orientacion_muro == "horizontal" else inactivo,
+            fg="white"
+        )
+        self.btn_muro_vertical.config(
+            bg=activo if self.orientacion_muro == "vertical" else inactivo,
+            fg="white"
+        )
 
     def _terminar_construccion(self):
         """Pasa a la fase de ataque."""
@@ -383,7 +431,10 @@ class VentanaJuego:
             return
 
         # Crear y colocar
-        est = crear_estructura(self.item_seleccionado["tipo"], fila, col)
+        est = crear_estructura(
+            self.item_seleccionado["tipo"], fila, col,
+            orientacion=self.orientacion_muro
+        )
         if est and self.mapa.colocar_estructura(est):
             self.defensor.gastar_gemas(costo)
             self._actualizar_gemas()

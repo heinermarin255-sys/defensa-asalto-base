@@ -188,3 +188,58 @@ class Mapa:
         self.unidades = []
         self.base = Base(BASE_FILA, BASE_COL)
         self.celdas[BASE_FILA][BASE_COL] = self.base
+
+    # ──────────────────────────────────────────
+    # Pathfinding (BFS) para movimiento de tropas
+    # ──────────────────────────────────────────
+
+    def siguiente_paso_bfs(self, origen_fila, origen_col, destino_fila, destino_col):
+        """
+        Calcula el siguiente paso hacia el destino usando BFS, tratando
+        muros, torres y la base como obstáculos. Si hay un hueco libre
+        en un cerco, el camino lo aprovecha en vez de pasar por encima
+        de un muro. Retorna (fila, col) del siguiente paso, o None si
+        no hay ningún camino libre hasta el destino.
+        """
+        from collections import deque
+
+        def bloqueada(f, c):
+            est = self.celdas[f][c]
+            return est is not None and est.tipo != "trampa" and est.esta_viva()
+
+        inicio = (origen_fila, origen_col)
+        objetivo = (destino_fila, destino_col)
+
+        if inicio == objetivo:
+            return None
+
+        visitados = {inicio}
+        cola = deque([inicio])
+        padres = {}
+
+        while cola:
+            actual = cola.popleft()
+            if actual == objetivo:
+                break
+
+            f, c = actual
+            for df, dc in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+                nf, nc = f + df, c + dc
+                vecino = (nf, nc)
+                if vecino in visitados or not self.celda_valida(nf, nc):
+                    continue
+                if vecino != objetivo and bloqueada(nf, nc):
+                    continue
+                visitados.add(vecino)
+                padres[vecino] = actual
+                cola.append(vecino)
+
+        if objetivo not in padres and objetivo != inicio:
+            return None
+
+        # Reconstruir el camino desde el objetivo hasta el primer paso
+        paso = objetivo
+        while padres.get(paso) != inicio and paso in padres:
+            paso = padres[paso]
+
+        return paso

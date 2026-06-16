@@ -3,8 +3,6 @@ clases/unidades.py
 Define las clases de tropas atacantes.
 Usa herencia: UnidadBase -> Duende, Gigante, Arquera, Pekka.
 """
-
-
 class UnidadBase:
     """
     Clase padre para todas las tropas del atacante.
@@ -135,8 +133,9 @@ class Duende(UnidadBase):
 class Gigante(UnidadBase):
     """
     Tropa lenta y resistente.
-    Prioriza atacar defensas; ignora muros salvo que le bloqueen el paso
-    completamente. Deja el ayuntamiento para el final.
+    Prioriza atacar defensas, pero igual que cualquier otra tropa no
+    puede atravesar un muro vivo: debe destruirlo o rodearlo por un
+    hueco libre para seguir avanzando.
     Se mueve una casilla cada 2 turnos.
     """
 
@@ -151,7 +150,6 @@ class Gigante(UnidadBase):
             costo=80, tipo="gigante"
         )
         self.prioriza_defensas = True
-        self.ignora_muros = True        # intenta rodear muros en lugar de atacarlos
 
     def puede_moverse_este_turno(self) -> bool:
         return (self._turno_interno % self.INTERVALO_MOVIMIENTO) == 1
