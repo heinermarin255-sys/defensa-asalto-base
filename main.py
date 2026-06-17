@@ -1,9 +1,11 @@
 """
-==============================================
-  Defensa y Asalto de Base - Juego de Estrategia
-  Proyecto Universitario - Intro a Programación
-==============================================
-Ejecutar este archivo para iniciar el juego.
+Segundo Proyecto - introduccion a la programacion
+integrantes:
+- Eyner Jose Marin Hernandez 2024345046
+- Axel Marenco Rohas 2026010082
+
+Nombre del proyecto: Clash of Worlds 
+
 """
 
 import tkinter as tk
@@ -16,7 +18,7 @@ def main():
     """Función principal que inicia la aplicación."""
     # Crear ventana raíz de Tkinter
     ventana_raiz = tk.Tk()
-    ventana_raiz.title("Defensa y Asalto de Base")
+    ventana_raiz.title("Clash of Worlds")
     ventana_raiz.geometry("1100x720")
     ventana_raiz.resizable(False, False)
     ventana_raiz.configure(bg="#1a1a2e")

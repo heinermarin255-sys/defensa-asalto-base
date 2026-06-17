@@ -59,7 +59,7 @@ class Juego:
 
         tk.Label(
             frame,
-            text=" Defensa y Asalto de Base",
+            text=" Clash of Worlds",
             font=("Courier", 30, "bold"),
             bg=COLOR_FONDO, fg=COLOR_ACENTO
         ).pack()
@@ -93,7 +93,7 @@ class Juego:
         # Versión
         tk.Label(
             frame,
-            text="Defensa y Asalto de Base — Intro a la Programación",
+            text="Clash of Worlds — Intro a la Programación",
             font=("Courier", 9),
             bg=COLOR_FONDO, fg="#555555"
         ).pack(side="bottom", pady=15)

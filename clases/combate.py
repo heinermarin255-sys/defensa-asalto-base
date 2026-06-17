@@ -5,7 +5,9 @@ Procesa cada turno: movimiento de tropas, ataques de torres, trampas.
 """
 
 from clases.mapa import Mapa
-from utils.constantes import BASE_FILA, BASE_COL
+from utils.constantes import (
+    BASE_FILA, BASE_COL, MAX_DESVIO_RUTA, UMBRAL_MURO_CASI_DESTRUIDO
+)
 
 
 class MotorCombate:
@@ -84,31 +86,80 @@ class MotorCombate:
 
             df, dc = destino
 
-            def celda_bloqueada(fila, col):
-                est = self.mapa.obtener_estructura(fila, col)
-                if not est or not est.esta_viva():
-                    return False
-                return est.tipo != "trampa"
-
             # Si ya está pegada al objetivo, no se mueve: ataca en la
-            # siguiente fase.
+            # siguiente fase. No hay muro de por medio en este caso.
             if abs(unidad.fila - df) + abs(unidad.col - dc) <= 1:
+                unidad._estructura_bloqueante = None
                 continue
 
-            paso = self.mapa.siguiente_paso_bfs(unidad.fila, unidad.col, df, dc)
+            # Si el muro que tiene enfrente está casi destruido, conviene
+            # terminarlo en vez de desviarse hacia una abertura cercana.
+            bloqueo_previo = self._estructura_que_bloquea(unidad, df, dc)
+            terminar_muro = (
+                bloqueo_previo is not None
+                and bloqueo_previo.tipo == "muro"
+                and bloqueo_previo.porcentaje_vida() <= UMBRAL_MURO_CASI_DESTRUIDO
+            )
+
+            paso = None
+            if not terminar_muro:
+                dist_directa = abs(unidad.fila - df) + abs(unidad.col - dc)
+                paso = self.mapa.siguiente_paso_bfs(
+                    unidad.fila, unidad.col, df, dc,
+                    max_pasos=dist_directa + MAX_DESVIO_RUTA
+                )
 
             if paso is not None:
-                # Hay un camino libre (por ejemplo, un hueco en el cerco):
-                # la unidad lo sigue en lugar de atacar un muro.
+                # Hay un camino libre dentro del rango permitido (por
+                # ejemplo, un hueco cercano en el cerco): la unidad lo
+                # sigue en lugar de atacar un muro.
                 unidad._turno_interno += 1
                 if unidad.puede_moverse_este_turno():
                     unidad.fila, unidad.col = paso
                     unidad.turnos_sin_mover = 0
+                unidad._estructura_bloqueante = None
             else:
-                # Sin camino libre: avanza directo hacia el destino,
-                # lo que la deja adyacente al obstáculo que la bloquea
-                # para poder atacarlo en la fase de ataque.
+                # Sin camino dentro del rango permitido: avanza directo
+                # hacia el destino, lo que la deja adyacente al obstáculo
+                # que la bloquea para poder atacarlo en la fase de ataque.
+                def celda_bloqueada(fila, col):
+                    est = self.mapa.obtener_estructura(fila, col)
+                    if not est or not est.esta_viva():
+                        return False
+                    return est.tipo != "trampa"
+
                 unidad.mover_hacia(df, dc, celda_bloqueada)
+                unidad._estructura_bloqueante = self._estructura_que_bloquea(unidad, df, dc)
+
+    def _estructura_que_bloquea(self, unidad, fila_destino, col_destino):
+        """
+        Retorna la estructura ubicada en la dirección que la unidad
+        necesita recorrer para acercarse al destino, o None si no hay
+        ninguna. Solo cuentan las direcciones que reducen la distancia
+        al destino, así una pared al costado del camino (que no le
+        impide seguir avanzando) no se considera un bloqueo.
+        """
+        delta_fila = fila_destino - unidad.fila
+        delta_col = col_destino - unidad.col
+
+        if delta_fila == 0 and delta_col == 0:
+            return None
+
+        principal = (1 if delta_fila > 0 else -1, 0) if delta_fila != 0 else None
+        secundaria = (0, 1 if delta_col > 0 else -1) if delta_col != 0 else None
+
+        if abs(delta_col) > abs(delta_fila):
+            principal, secundaria = secundaria, principal
+
+        for direccion in (principal, secundaria):
+            if direccion is None:
+                continue
+            est = self.mapa.obtener_estructura(
+                unidad.fila + direccion[0], unidad.col + direccion[1]
+            )
+            if est and est.esta_viva() and est.tipo != "trampa":
+                return est
+        return None
 
     def _buscar_defensa_mas_cercana(self, unidad) -> tuple:
         """
@@ -213,14 +264,21 @@ class MotorCombate:
         Retorna la estructura adyacente de mayor prioridad para atacar.
         Prioridad: torres/defensas > muros (solo si bloquean) > base.
         """
+        bloqueante = getattr(unidad, "_estructura_bloqueante", None)
         direcciones = [(0, 1), (0, -1), (1, 0), (-1, 0)]
         candidatos = []
         for df, dc in direcciones:
             nf, nc = unidad.fila + df, unidad.col + dc
             if self.mapa.celda_valida(nf, nc):
                 est = self.mapa.celdas[nf][nc]
-                if est and est.esta_viva() and est.tipo != "trampa":
-                    candidatos.append(est)
+                if not est or not est.esta_viva() or est.tipo == "trampa":
+                    continue
+                # Un muro solo es un objetivo válido si efectivamente
+                # bloquea el avance de la tropa; de lo contrario, pasar
+                # junto a él no debe causarle daño.
+                if est.tipo == "muro" and est is not bloqueante:
+                    continue
+                candidatos.append(est)
 
         if not candidatos:
             return None
@@ -255,6 +313,7 @@ class MotorCombate:
     def _buscar_estructura_en_rango(self, unidad):
         """Busca la estructura más cercana dentro del alcance de la unidad."""
         alcance = getattr(unidad, 'alcance_ataque', 1)
+        bloqueante = getattr(unidad, "_estructura_bloqueante", None)
         mejor = None
         menor_dist = float('inf')
 
@@ -262,11 +321,14 @@ class MotorCombate:
         for fila in range(FILAS):
             for col in range(COLUMNAS):
                 est = self.mapa.obtener_estructura(fila, col)
-                if est and est.esta_viva() and est.tipo != "trampa":
-                    dist = abs(unidad.fila - fila) + abs(unidad.col - col)
-                    if dist <= alcance and dist < menor_dist:
-                        menor_dist = dist
-                        mejor = est
+                if not est or not est.esta_viva() or est.tipo == "trampa":
+                    continue
+                if est.tipo == "muro" and est is not bloqueante:
+                    continue
+                dist = abs(unidad.fila - fila) + abs(unidad.col - col)
+                if dist <= alcance and dist < menor_dist:
+                    menor_dist = dist
+                    mejor = est
         return mejor
 
     # ──────────────────────────────────────────

@@ -1,4 +1,4 @@
-# Defensa y Asalto de Base
+# Clash of Worlds
 
 Juego de estrategia local para dos jugadores, inspirado en el género de
 defensa de base tipo Clash of Clans. Desarrollado en Python con Tkinter
@@ -41,7 +41,7 @@ python main.py
 ## Estructura del proyecto
 
 ```
-Defensa y Asalto de Base/
+Clash of Worlds/
 │
 ├── main.py                    Punto de entrada de la aplicación
 │
@@ -122,7 +122,7 @@ Los dos jugadores deben elegir facciones distintas.
 | Torre de Magos   | 80    | 70   | 25   | 2       | Daño en area                    |
 | Torre Infernal   | 100   | 90   | 10+  | 2       | El daño aumenta con cada ataque |
 | Cañon            | 70    | 120  | 40   | 2       | Daño alto, velocidad de ataque baja |
-| Muro             | 20    | 200  | 0    | -       | Bloquea el paso de las tropas   |
+| Muro             | 10    | 200  | 0    | -       | Bloquea el paso de las tropas   |
 | Trampa explosiva | 30    | 1    | 50   | -       | Se activa una sola vez al ser pisada |
 
 Para construir, selecciona una defensa en el panel lateral y haz clic en
@@ -143,6 +143,33 @@ construirse encima de ella.
 Para atacar, selecciona una tropa en el panel lateral y haz clic en una
 celda del borde del mapa para desplegarla. Cuando termines de desplegar
 tropas, presiona el boton para iniciar el combate.
+
+---
+
+## Comportamiento de las tropas en combate
+
+Cada tropa avanza hacia su objetivo (la base central, o la defensa más
+cercana en el caso del gigante) buscando el camino más corto y evitando
+muros, torres y la base. Si hay un hueco en el cerco, ya sea porque el
+defensor lo dejó libre o porque un muro fue destruido durante el combate,
+la tropa lo usa para seguir avanzando en lugar de detenerse a atacar.
+
+Un muro solo recibe daño cuando bloquea directamente el avance de la
+tropa hacia su objetivo. Si la tropa simplemente pasa junto a un muro, o
+lo tiene a un costado del camino sin que le impida seguir, el muro no se
+ve afectado.
+
+Para que una tropa no abandone un muro que ya está atacando con el fin
+de perseguir una abertura ubicada en una zona lejana del mapa, la
+búsqueda de camino tiene un límite de desvío. Este límite se define en
+`MAX_DESVIO_RUTA` (`utils/constantes.py`): si la única ruta disponible
+exige rodear más casillas que ese valor, la tropa la descarta y sigue
+atacando el obstáculo que tiene enfrente. De forma similar, si el muro
+que está atacando ya está casi destruido (por debajo del porcentaje de
+vida definido en `UMBRAL_MURO_CASI_DESTRUIDO`), la tropa prioriza
+terminarlo antes que desviarse, incluso si hay una abertura cercana
+disponible. Esto evita que las tropas cambien de objetivo de forma
+constante y hace que su recorrido se vea más natural.
 
 ---
 
@@ -215,4 +242,3 @@ Archivos esperados en la carpeta `sonidos/`:
 ## Posibles mejoras futuras
 
 - Animaciones durante el combate
-

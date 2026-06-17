@@ -39,7 +39,7 @@ class VentanaLogin:
         # Título
         tk.Label(
             self.frame,
-            text="⚔️  CLASH UNIVERSITARIO",
+            text="⚔️  CLASH OF WORLDS",
             font=("Courier", 28, "bold"),
             bg=COLOR_FONDO, fg=COLOR_ACENTO
         ).pack(pady=(40, 5))

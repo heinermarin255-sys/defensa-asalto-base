@@ -31,6 +31,18 @@ BONO_BAJA = 15                      # el defensor gana este valor por cada unida
 RONDAS_PARA_GANAR = 3
 INTERVALO_COMBATE_MS = 600          # milisegundos entre cada turno de combate
 
+# ── Movimiento y combate de tropas ───────────────────────────────────────────
+# Desvío máximo (en casillas, por encima de la distancia directa) que una
+# tropa está dispuesta a recorrer para alcanzar una abertura en el cerco.
+# Si la abertura más cercana exige un desvío mayor, la tropa la ignora y
+# sigue atacando el muro que tiene enfrente.
+MAX_DESVIO_RUTA = 3
+
+# Porcentaje de vida (0.0 a 1.0) por debajo del cual un muro se considera
+# "casi destruido". Mientras esté en ese estado, la tropa que lo está
+# atacando termina de destruirlo en vez de desviarse hacia una abertura.
+UMBRAL_MURO_CASI_DESTRUIDO = 0.25
+
 # ──────────────────────────────────────────
 # COLORES BASE (tema oscuro)
 # ──────────────────────────────────────────

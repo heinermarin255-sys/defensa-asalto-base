@@ -193,13 +193,19 @@ class Mapa:
     # Pathfinding (BFS) para movimiento de tropas
     # ──────────────────────────────────────────
 
-    def siguiente_paso_bfs(self, origen_fila, origen_col, destino_fila, destino_col):
+    def siguiente_paso_bfs(self, origen_fila, origen_col, destino_fila, destino_col,
+                            max_pasos=None):
         """
         Calcula el siguiente paso hacia el destino usando BFS, tratando
         muros, torres y la base como obstáculos. Si hay un hueco libre
         en un cerco, el camino lo aprovecha en vez de pasar por encima
         de un muro. Retorna (fila, col) del siguiente paso, o None si
         no hay ningún camino libre hasta el destino.
+
+        max_pasos limita la longitud del camino aceptado. Si la única
+        ruta disponible es más larga que ese límite, se trata como si
+        no existiera camino, para que una abertura demasiado lejana no
+        desvíe a la tropa de lo que tiene justo enfrente.
         """
         from collections import deque
 
@@ -213,7 +219,7 @@ class Mapa:
         if inicio == objetivo:
             return None
 
-        visitados = {inicio}
+        distancias = {inicio: 0}
         cola = deque([inicio])
         padres = {}
 
@@ -222,15 +228,18 @@ class Mapa:
             if actual == objetivo:
                 break
 
+            if max_pasos is not None and distancias[actual] >= max_pasos:
+                continue
+
             f, c = actual
             for df, dc in ((0, 1), (0, -1), (1, 0), (-1, 0)):
                 nf, nc = f + df, c + dc
                 vecino = (nf, nc)
-                if vecino in visitados or not self.celda_valida(nf, nc):
+                if vecino in distancias or not self.celda_valida(nf, nc):
                     continue
                 if vecino != objetivo and bloqueada(nf, nc):
                     continue
-                visitados.add(vecino)
+                distancias[vecino] = distancias[actual] + 1
                 padres[vecino] = actual
                 cola.append(vecino)
 
