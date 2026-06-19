@@ -2,13 +2,37 @@
     "jose": {
         "password": "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
         "victorias_defensor": 6,
-        "victorias_atacante": 1,
-        "partidas_jugadas": 7
+        "victorias_atacante": 2,
+        "partidas_jugadas": 8
     },
     "pedro": {
         "password": "38083c7ee9121e17401883566a148aa5c2e2d55dc53bc4a94a026517dbff3c6b",
         "victorias_defensor": 1,
         "victorias_atacante": 6,
         "partidas_jugadas": 7
+    },
+    "pablo": {
+        "password": "1ea2f89d934cb4a2af0b486736609cf9cb4bdafdc6e946e79aecb02b9d9dceb4",
+        "victorias_defensor": 2,
+        "victorias_atacante": 0,
+        "partidas_jugadas": 2
+    },
+    "luis": {
+        "password": "0f6b80a3b77e807e8e2ed9fd5fa92d877657b07979bf5832b1b7ddbb4daa1af1",
+        "victorias_defensor": 1,
+        "victorias_atacante": 1,
+        "partidas_jugadas": 2
+    },
+    "vicente": {
+        "password": "b3282a2f2a28757b3a18ab833de16a9c54518c0b0cf493e3f0a7cf09386f326a",
+        "victorias_defensor": 1,
+        "victorias_atacante": 0,
+        "partidas_jugadas": 1
+    },
+    "andres": {
+        "password": "bcac371b54f59945a14aa49e2e408e5d6e4dbc59387f5d8cfc6b015d40d5bb02",
+        "victorias_defensor": 0,
+        "victorias_atacante": 2,
+        "partidas_jugadas": 2
     }
 }
